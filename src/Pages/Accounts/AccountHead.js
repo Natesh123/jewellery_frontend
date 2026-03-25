@@ -735,7 +735,7 @@ const AccountHead = () => {
                   { title: 'Product', dataIndex: 'product', key: 'product' },
                   { title: 'Weight', dataIndex: 'weight', key: 'weight' },
                   { title: 'Wage', dataIndex: 'total_wage', key: 'total_wage', render: (val) => `₹${val}` },
-                  { title: 'Date', dataIndex: 'created_at', key: 'created_at', render: (val) => new Date(val).toLocaleDateString() },
+                  { title: 'Date', dataIndex: 'created_at', key: 'created_at', render: (val) => new Date(val).toLocaleDateString('en-GB') },
                 ]}
               />
             </TabPane>
@@ -747,7 +747,7 @@ const AccountHead = () => {
                 pagination={false}
                 size="small"
                 columns={[
-                  { title: 'Date', dataIndex: 'created_at', key: 'created_at', render: (val) => new Date(val).toLocaleDateString() },
+                  { title: 'Date', dataIndex: 'created_at', key: 'created_at', render: (val) => new Date(val).toLocaleDateString('en-GB') },
                   { title: 'Mode', dataIndex: 'mode', key: 'mode' },
                   { title: 'Amount', dataIndex: 'amount', key: 'amount', render: (val) => `₹${val}` },
                   { title: 'Balance', dataIndex: 'balanceAmt', key: 'balanceAmt', render: (val) => `₹${val}` },
