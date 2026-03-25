@@ -1,0 +1,65 @@
+.app-container {
+  display: grid;
+  grid-template-areas:
+    "sidebar header"
+    "sidebar main";
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  background-color: var(--background-default);
+  transition: grid-template-columns var(--transition-normal);
+}
+
+.app-container.sidebar-collapsed {
+  grid-template-columns: 72px 1fr;
+}
+
+.main-content {
+  grid-area: main;
+  padding: 24px;
+  overflow-y: auto;
+  background-color: var(--background-paper);
+  transition: padding var(--transition-normal);
+}
+
+.main-content.authenticated {
+  padding: 24px;
+  margin-left: 275px;
+}
+
+/* Responsive Layout */
+@media (max-width: 992px) {
+  .app-container {
+    grid-template-areas:
+      "header"
+      "main";
+    grid-template-columns: 1fr;
+  }
+
+  .main-content.authenticated{
+    padding: 16px;
+    margin-left: 0;
+  }
+  
+  .app-container.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+  
+  .main-content {
+    padding: 16px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .main-content {
+    padding: 32px;
+  }
+}
+
+/* Smooth transitions for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .app-container,
+  .main-content {
+    transition: none;
+  }
+}

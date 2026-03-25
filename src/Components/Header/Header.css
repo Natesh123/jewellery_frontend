@@ -1,0 +1,237 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--background-paper);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  grid-area: header;
+}
+
+.header.scrolled {
+  box-shadow: var(--shadow-md);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 64px;
+  padding: 0 24px;
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.sidebar-toggle, .mobile-sidebar-toggle {
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.sidebar-toggle:hover, .mobile-sidebar-toggle:hover {
+  background-color: var(--secondary-lighter);
+  color: var(--primary-main);
+}
+
+.mobile-sidebar-toggle {
+  display: none;
+}
+
+.header-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.header-search input {
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  width: 240px;
+  transition: all var(--transition-fast);
+}
+
+.header-search input:focus {
+  outline: none;
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 2px var(--primary-lighter);
+}
+
+.header-search svg {
+  position: absolute;
+  left: 12px;
+  color: var(--secondary-light);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.notification-btn:hover {
+  background-color: var(--secondary-lighter);
+  color: var(--primary-main);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background-color: var(--error-main);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.user-profile-wrapper {
+  position: relative;
+}
+
+.user-profile-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.user-profile-dropdown:hover {
+  background-color: var(--secondary-lighter);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--primary-main);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  background-color: var(--background-paper);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  width: 200px;
+  overflow: hidden;
+  z-index: 110;
+  animation: fadeInScale var(--transition-fast) forwards;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background-color: var(--secondary-lighter);
+  color: var(--primary-main);
+}
+
+.dropdown-item svg {
+  font-size: 1.1rem;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .header-search input {
+    width: 180px;
+  }
+}
+
+@media (max-width: 992px) {
+  .mobile-sidebar-toggle {
+    display: block;
+  }
+  
+  .header-content {
+    padding: 0 16px;
+  }
+  
+  .user-info {
+    display: none;
+  }
+  
+  .header-search input {
+    width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-search {
+    display: none;
+  }
+}

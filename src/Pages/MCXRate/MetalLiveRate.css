@@ -1,0 +1,247 @@
+.metal-rates-container {
+    padding: 24px;
+    background: linear-gradient(135deg, 
+        #000428 0%, 
+        #004e92 15%, 
+        #000428 30%, 
+        #004e92 45%,
+        #000428 60%,
+        #004e92 75%,
+        #000428 90%,
+        #004e92 100%);
+    min-height: 100vh;
+    transition: all 0.3s ease;
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+}
+
+.metal-rates-container.fullscreen {
+    padding: 40px;
+    background: linear-gradient(135deg, 
+        #000428 0%, 
+        #004e92 15%, 
+        #000428 30%, 
+        #004e92 45%,
+        #000428 60%,
+        #004e92 75%,
+        #000428 90%,
+        #004e92 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 20s ease infinite;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.title{
+    color: white !important;
+    font-size: 2.5rem !important;
+}
+.metal-rates-container.fullscreen .title {
+    color: white !important;
+    font-size: 2.5rem !important;
+}
+
+.metal-rates-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+.ldflkj{
+    color:#a70491;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+}
+
+.auto-refresh-label {
+    color: white !important;
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 50vh;
+}
+
+.metal-col {
+    animation: fadeIn 0.5s ease-in-out;
+    animation-fill-mode: both;
+}
+
+.metal-card {
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    overflow: hidden;
+    height: 100%;
+    backdrop-filter: blur(5px);
+    background: rgba(255, 255, 255, 0.85) !important;
+}
+
+.metal-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+}
+
+.metal-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.metal-icon {
+    font-size: 28px;
+    margin-right: 10px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.metal-name {
+    margin: 0 !important;
+    margin-right: 10px !important;
+    font-weight: 700 !important;
+}
+
+.metal-price {
+    margin: 20px 0;
+}
+
+.metal-price .ant-statistic-content {
+    font-weight: 700;
+}
+
+.price-change {
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.price-change-up {
+    color: #52c41a;
+    background-color: rgba(82, 196, 26, 0.1);
+}
+
+.price-change-down {
+    color: #f5222d;
+    background-color: rgba(245, 34, 45, 0.1);
+}
+
+.price-change-stable {
+    color: #faad14;
+    background-color: rgba(250, 173, 20, 0.1);
+}
+
+.price-trend {
+    margin-bottom: 16px;
+}
+
+.price-trend .ant-progress-bg {
+    height: 10px !important;
+}
+
+.metal-details {
+    font-size: 12px;
+}
+
+/* Animation for cards */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Stagger animations for each card */
+.metal-col:nth-child(1) { animation-delay: 0.1s; }
+.metal-col:nth-child(2) { animation-delay: 0.2s; }
+.metal-col:nth-child(3) { animation-delay: 0.3s; }
+.metal-col:nth-child(4) { animation-delay: 0.4s; }
+.metal-col:nth-child(5) { animation-delay: 0.5s; }
+.metal-col:nth-child(6) { animation-delay: 0.6s; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .metal-rates-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .controls {
+        margin-top: 20px;
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .metal-rates-container.fullscreen {
+        padding: 20px;
+    }
+    
+    .metal-card {
+        padding: 16px;
+    }
+}
+
+/* Fullscreen mode enhancements */
+.fullscreen .metal-card {
+    background: rgba(255, 255, 255, 0.15) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen .metal-card .ant-statistic-content {
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.fullscreen .metal-card .ant-typography {
+    color: white;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.fullscreen .metal-card .metal-details {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.fullscreen .price-change-up,
+.fullscreen .price-change-down,
+.fullscreen .price-change-stable {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Custom scrollbar for the container */
+.metal-rates-container::-webkit-scrollbar {
+    width: 8px;
+    color:#58585a;
+}
+
+.metal-rates-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.metal-rates-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+
+.metal-rates-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
