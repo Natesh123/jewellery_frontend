@@ -26,8 +26,8 @@ export const sidebarItems = [
     label: 'Users',
     permission: 'users:user-creation',
     children: [
-      { 
-        path: '/roles', 
+      {
+        path: '/roles',
         label: 'Roles',
         permission: 'users:roles'
       },
@@ -178,13 +178,7 @@ export const sidebarItems = [
     exact: true,
     permission: 'money_request'
   },
-  {
-    path: '/accounts',
-    icon: 'pledge',
-    label: 'Money Request (Accounts)',
-    exact: true,
-    permission: 'accounts'
-  },
+
   {
     path: '/collection',
     icon: 'pledge',
@@ -230,7 +224,7 @@ export const sidebarItems = [
   {
     path: '/accounts_approval',
     icon: 'pledge',
-    label: 'Pledge Approval (Accounts)',
+    label: 'Pledge Manager (Accounts)',
     exact: true,
     permission: 'accounts_approval'
   },
@@ -316,7 +310,7 @@ export const sidebarItems = [
     icon: 'settings',
     label: 'Fix Today Rate',
     exact: true,
-   permission: 'fix_today_rate'
+    permission: 'fix_today_rate'
   },
   {
     path: '/margin_settings',
@@ -329,7 +323,7 @@ export const sidebarItems = [
   //   path: '/settings',
   //   icon: 'settings',
   //   label: 'Settings',
-// <<<<<<< HEAD
+  // <<<<<<< HEAD
   //   permission: 'settings:setting',
   //   children: [
   //     {
@@ -355,8 +349,8 @@ export const sidebarItems = [
   //   path: '/settings',
   //   icon: 'settings',
   //   label: 'Settings',
-// =======
-// >>>>>>> 5fa7ad682928a3a622f37222d1916f2be25a1ab7
+  // =======
+  // >>>>>>> 5fa7ad682928a3a622f37222d1916f2be25a1ab7
   //   permission: 'setting:settings',
   //   children: [
   //     {

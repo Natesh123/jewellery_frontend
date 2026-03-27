@@ -22,10 +22,10 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 1024);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -35,14 +35,15 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
       try {
         setLoading(true);
         const roleId = localStorage.getItem('userRoleId');
-        
+        const roleName = localStorage.getItem('userRole');
+
         if (!roleId) {
           throw new Error('No role found in localStorage');
         }
 
         const permissions = await getPermissionsByRole(roleId);
         const filteredItems = filterSidebarItems(permissions.permissions);
-        
+
         setFilteredSidebarItems(filteredItems);
         setError(null);
       } catch (err) {
@@ -75,11 +76,11 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
   useEffect(() => {
     const expandActiveParents = () => {
       const newExpanded = {};
-      
+
       const checkChildren = (items) => {
         items.forEach(item => {
           if (item.children) {
-            const hasActiveChild = item.children.some(child => 
+            const hasActiveChild = item.children.some(child =>
               location.pathname.startsWith(child.path) || checkChildren(child.children || [])
             );
             if (hasActiveChild) {
@@ -88,7 +89,7 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
           }
         });
       };
-      
+
       checkChildren(filteredSidebarItems);
       setExpandedItems(prev => ({ ...prev, ...newExpanded }));
     };
@@ -106,8 +107,8 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
   const isItemActive = (item) => {
     if (item.path === location.pathname) return true;
     if (item.children) {
-      return item.children.some(child => 
-        location.pathname.startsWith(child.path) || 
+      return item.children.some(child =>
+        location.pathname.startsWith(child.path) ||
         location.pathname === child.path ||
         isItemActive(child)
       );
@@ -139,7 +140,7 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
     if (hasChildren) {
       return (
         <li key={item.path} className={`nav-item nav-parent level-${level} ${isActive ? 'active' : ''}`}>
-          <div 
+          <div
             className={`nav-link parent-link ${isActive ? 'active' : ''}`}
             onClick={() => handleNavClick(item)}
             onKeyDown={(e) => handleKeyDown(e, () => handleNavClick(item))}
@@ -156,13 +157,13 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
                 <span className="link-text">{item.label}</span>
               )}
             </div>
-            
+
             {(open || isMobile) && (
               <div className="expand-icon">
                 {isExpanded ? <ArrowDropDownIcon /> : <ArrowRightIcon />}
               </div>
             )}
-            
+
             {!open && !isMobile && (
               <div className="tooltip">
                 <span>{item.label}</span>
@@ -170,7 +171,7 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
               </div>
             )}
           </div>
-          
+
           <div className={`nav-children-wrapper ${isExpanded ? 'expanded' : 'collapsed'}`}>
             {((open || isMobile) && isExpanded) && (
               <ul className={`nav-children level-${level + 1}`}>
@@ -184,7 +185,7 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
 
     return (
       <li key={item.path} className={`nav-item nav-child level-${level}`}>
-        <NavLink 
+        <NavLink
           to={item.path}
           end={item.exact}
           onClick={handleChildClick}
@@ -201,7 +202,7 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
               <span className="link-text">{item.label}</span>
             )}
           </div>
-          
+
           {!open && !isMobile && (
             <div className="tooltip">
               <span>{item.label}</span>
@@ -221,13 +222,13 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
 
   return (
     <>
-      <div 
-        className={`sidebar-overlay ${mobileOpen ? 'active' : ''}`} 
-        onClick={onCloseMobile} 
+      <div
+        className={`sidebar-overlay ${mobileOpen ? 'active' : ''}`}
+        onClick={onCloseMobile}
         aria-hidden="true"
       />
-      
-      <aside 
+
+      <aside
         ref={sidebarRef}
         className={`sidebar ${open ? 'expanded' : 'collapsed'} ${mobileOpen ? 'mobile-open' : ''} ${isMobile ? 'mobile' : 'desktop'}`}
         aria-label="Main navigation"
@@ -243,9 +244,9 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
               </div>
             )}
           </div>
-          
+
           {!isMobile && onToggleSidebar && (
-            <button 
+            <button
               className="sidebar-toggle-btn"
               onClick={onToggleSidebar}
               aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
@@ -255,20 +256,20 @@ const Sidebar = ({ open, mobileOpen, onCloseMobile, onToggleSidebar }) => {
             </button>
           )}
         </div>
-        
+
         <nav className="sidebar-nav">
           <ul className="nav-list">
             {loading ? (
               <li className="nav-item loading">Loading menu...</li>
             ) : error ? (
               <li className="nav-item error">Error: {error}</li>
-            ) 
-            : filteredSidebarItems.length > 0 ? (
-              filteredSidebarItems.map(item => renderNavItem(item))
-            ) 
-            : (
-              <li className="nav-item no-permissions">No menu items available</li>
-            )}
+            )
+              : filteredSidebarItems.length > 0 ? (
+                filteredSidebarItems.map(item => renderNavItem(item))
+              )
+                : (
+                  <li className="nav-item no-permissions">No menu items available</li>
+                )}
           </ul>
         </nav>
       </aside>

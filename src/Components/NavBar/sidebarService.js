@@ -7,8 +7,8 @@ export const filterSidebarItems = (permissions) => {
       if (item.children) {
         const filteredChildren = filterItems(item.children);
         // Only keep parent if it has children or has its own permission
-        return filteredChildren.length > 0 || 
-               (item.permission && permissions.includes(item.permission));
+        return filteredChildren.length > 0 ||
+          (item.permission && permissions.includes(item.permission));
       }
       // For items without children, check permission
       return !item.permission || permissions.includes(item.permission);

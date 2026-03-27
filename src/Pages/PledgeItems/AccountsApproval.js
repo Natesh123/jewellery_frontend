@@ -88,9 +88,13 @@ const AccountsApproval = () => {
         pledge_amount: pledge.pledge_amount,
         approval: pledge.approval_accounts_status,
         regional_manager_status: pledge.regional_manager_status,
-        bill: "/public" + pledge.bill,
-        ornament_photo: "/public" + pledge.ornament_photo,
+        bill: pledge.bill,
+        ornament_photo: pledge.ornament_photo,
         products: pledge.product_details || [],
+        status: pledge.approval_accounts_status === '1' ? 'active' :
+          pledge.approval_accounts_status === '2' ? 'processing' :
+            pledge.approval_accounts_status === '3' ? 'rejected' :
+              'pending_approval',
         interest_rate: pledge.interest_rate,
         current_interest: pledge.current_interest,
         total_payment: pledge.total_payment,
@@ -308,7 +312,7 @@ const AccountsApproval = () => {
         </div>
       )
     },
-     {
+    {
       title: 'Bill',
       key: 'bill',
       width: 80,
@@ -374,53 +378,20 @@ const AccountsApproval = () => {
       width: 120,
       render: (_, record) => {
         let color, text;
-        switch (record.approval) {
-          case '1':
+        switch (record.status) {
+          case 'active':
             color = 'blue';
             text = 'Approved';
             break;
-          case '2':
+          case 'processing':
             color = 'orange';
             text = 'Processing';
             break;
-          case '3':  // You might want to add this if you have more statuses
+          case 'rejected':
             color = 'red';
             text = 'Rejected';
             break;
-          case '4':  // Example for rejected status
-            color = 'red';
-            text = 'Rejected';
-            break;
-          default:
-            color = 'gray';
-            text = 'Pending';
-        }
-        return <Tag color={color}>{text}</Tag>;
-      }
-    },
-    {
-      title: 'Regional Manager Status',
-      key: 'status',
-      width: 120,
-      render: (_, record) => {
-        let color, text;
-        switch (record.regional_manager_status) {
-          case '1':
-            color = 'blue';
-            text = 'Approved';
-            break;
-          case '2':
-            color = 'orange';
-            text = 'Processing';
-            break;
-          case '3':  // You might want to add this if you have more statuses
-            color = 'red';
-            text = 'Rejected';
-            break;
-          case '4':  // Example for rejected status
-            color = 'red';
-            text = 'Rejected';
-            break;
+          case 'pending_approval':
           default:
             color = 'gray';
             text = 'Pending';
@@ -440,31 +411,32 @@ const AccountsApproval = () => {
             onClick={() => generatePledgePDF(record)}
             style={{ color: roots.status.error.main }}
           />
-          {record.status === 'pending_approval' && (
+
+          {record.status !== 'active' && (
             <>
+              {(record.status !== 'processing') && (
+                <>
+                  <Button
+                    type="link"
+                    icon={<CheckOutlined />}
+                    onClick={() => updatePledgeStatus(record.key, 'processing')}
+                    style={{ color: roots.status.success.main }}
+                  />
+                  <Button
+                    type="link"
+                    icon={<CloseOutlined />}
+                    onClick={() => updatePledgeStatus(record.key, 'rejected')}
+                    style={{ color: roots.status.error.main }}
+                  />
+                </>
+              )}
               <Button
                 type="link"
-                icon={<CheckOutlined />}
-                onClick={() => updatePledgeStatus(record.key, 'active')}
-                style={{ color: roots.status.success.main }}
-              />
-              <Button
-                type="link"
-                icon={<CloseOutlined />}
-                onClick={() => updatePledgeStatus(record.key, 'rejected')}
-                style={{ color: roots.status.error.main }}
+                icon={<UserAddOutlined />}
+                onClick={() => showAssignModal(record.key)}
               />
             </>
           )}
-          {record.regional_manager_status == '1' && (
-            <Button
-              type="link"
-              icon={<UserAddOutlined />}
-              onClick={() => showAssignModal(record.key)}
-            />
-          )}
-
-
         </Space>
       )
     }
