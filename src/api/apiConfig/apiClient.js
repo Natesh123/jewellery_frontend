@@ -5,8 +5,8 @@ import { handleApiError } from '../../utils/errorHandler';
 export const PRINT_BASE_URL = 'http://localhost:7826/';
 
 // export const API_BASE_URL = 'https://r9kj46l6-5000.inc1.devtunnels.ms/api';
-// export const API_BASE_URL = 'https://amayagoldpoint.in/api';
-export const API_BASE_URL = 'http://localhost:5000/api';
+export const API_BASE_URL = 'https://amayagoldpoint.in/api';
+// export const API_BASE_URL = 'http://localhost:5000/api';
 
 
 const apiClient = axios.create({

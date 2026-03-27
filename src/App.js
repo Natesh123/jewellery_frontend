@@ -27,7 +27,7 @@ import Permissions from './Pages/User_creation/Permissions/Permissions';
 import Receipt from './Pages/Receipt/Receipt';
 import Sales from './Pages/Sales/Sales';
 import Reports from './Pages/Reports/Reports';
-import Accounts from './Pages/PledgeItems/Accounts';
+
 import Collections from './Pages/PledgeItems/Collection'
 import BankCollection from './Pages/PledgeItems/BankCollection'
 import FinanceInstitute from './Pages/PledgeItems/FinanceInstitute';
@@ -368,7 +368,6 @@ function App() {
                 isAuthenticated ? <Reports /> : <Navigate to="/login" replace />
               }
             />
-
             <Route
               path="pledege_item_manager"
               element={
@@ -385,12 +384,6 @@ function App() {
               path="pledege_sales_executive"
               element={
                 isAuthenticated ? <PledgeSalesExecutive /> : <Navigate to="/login" replace />
-              }
-            />
-            <Route
-              path="accounts"
-              element={
-                isAuthenticated ? <Accounts /> : <Navigate to="/login" replace />
               }
             />
             <Route

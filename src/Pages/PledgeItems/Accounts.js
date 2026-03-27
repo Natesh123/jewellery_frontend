@@ -97,7 +97,6 @@ const Accounts = () => {
         remarks: pledge.remarks,
         user_data: pledge.user_data,
         accounts_amount: JSON.parse(pledge.accounts_amount) || 0,
-
       }));
 
       setPledges(transformedPledges);
@@ -467,7 +466,7 @@ const Accounts = () => {
               setAmount(record.accounts_amount)
             }}
           />
-          
+
         </Space>
       )
     }
