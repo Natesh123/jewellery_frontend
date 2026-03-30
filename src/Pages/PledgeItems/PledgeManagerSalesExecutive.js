@@ -110,17 +110,7 @@ const PledgeManagerSalesExecutive = () => {
   // Load mock data
   useEffect(() => {
     fetchPledges();
-    fetchExecutives()
-
-
-    const mockPledges = [
-
-    ];
-
-
-
-    setPledges(mockPledges);
-    setFilteredPledges(mockPledges);
+    fetchExecutives();
   }, []);
 
   useEffect(() => {
@@ -211,12 +201,18 @@ const PledgeManagerSalesExecutive = () => {
     }
     try {
       setLoading(true);
-      await pledgeService.assigneExecutive(currentPledgeId, { regional_status: selectedExecutive, user_id: localStorage.getItem("userId") });
-      message.success('Executive assigned successfully');
+      await pledgeService.assigneRegigonalApproval(currentPledgeId, {
+        regional_status: selectedExecutive,
+        regional_manager_status: selectedExecutive,
+        approval: selectedExecutive,
+        user_id: localStorage.getItem("userId")
+      });
+      message.success('Update successfully');
+      fetchPledges();
       setIsAssignModalVisible(false);
       setSelectedExecutive(null);
     } catch (error) {
-      message.error('Failed to assign executive');
+      message.error('Failed to update');
       console.error(error);
     } finally {
       setLoading(false);

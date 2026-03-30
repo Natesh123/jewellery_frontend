@@ -24,6 +24,7 @@ import {
   FilePdfOutlined,
   CheckOutlined,
   CloseOutlined,
+  EditOutlined,
   UserAddOutlined
 } from '@ant-design/icons';
 import { roots } from '../../colorConstant';
@@ -114,17 +115,7 @@ const AccountsApproval = () => {
   // Load mock data
   useEffect(() => {
     fetchPledges();
-    fetchExecutives()
-
-
-    const mockPledges = [
-
-    ];
-
-
-
-    setPledges(mockPledges);
-    setFilteredPledges(mockPledges);
+    fetchExecutives();
   }, []);
 
   useEffect(() => {
@@ -233,11 +224,29 @@ const AccountsApproval = () => {
     // PDF generation logic would go here
   };
 
-  const updatePledgeStatus = (key, status) => {
-    setPledges(prev => prev.map(item =>
-      item.key === key ? { ...item, status } : item
-    ));
-    message.success(`Pledge status updated to ${status}`);
+  const updatePledgeStatus = async (key, statusLabel) => {
+    try {
+      setLoading(true);
+      const statusMap = {
+        'active': '1',
+        'processing': '2',
+        'rejected': '3'
+      };
+      const statusCode = statusMap[statusLabel];
+
+      await pledgeService.assignAccountsApproval(key, {
+        approval_accounts_status: statusCode,
+        user_id: localStorage.getItem("userId")
+      });
+
+      message.success(`Pledge status updated successfully`);
+      fetchPledges(); // Refresh list to get updated status from DB
+    } catch (error) {
+      console.error('Error updating status:', error);
+      message.error('Failed to update status');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const pledgeColumns = [
@@ -432,7 +441,7 @@ const AccountsApproval = () => {
               )}
               <Button
                 type="link"
-                icon={<UserAddOutlined />}
+                icon={<EditOutlined />}
                 onClick={() => showAssignModal(record.key)}
               />
             </>

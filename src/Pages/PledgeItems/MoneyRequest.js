@@ -23,6 +23,7 @@ import {
   FilePdfOutlined,
   CheckOutlined,
   CloseOutlined,
+  EditOutlined,
   UserAddOutlined
 } from '@ant-design/icons';
 import { roots } from '../../colorConstant';
@@ -42,7 +43,7 @@ const MoneyRequest = () => {
   });
   const [pledges, setPledges] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [total_val,settotal_val]=useState("")
+  const [total_val, settotal_val] = useState("")
   const [pledgeFilters, setPledgeFilters] = useState({
     search: '',
     metal: '',
@@ -261,14 +262,14 @@ const MoneyRequest = () => {
 
     try {
       setLoading(true);
-      
+
       // First get the current location
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           try {
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
-            
+
             const result = await Swal.fire({
               title: "Do you want to change the status?",
               showDenyButton: true,
@@ -288,7 +289,7 @@ const MoneyRequest = () => {
 
               // Ensure the pledge ID is correctly passed
               await pledgeService.updateMoneyRequest(currentPledgeId, updateData);
-              
+
               Swal.fire("Updated!", "", "success");
               fetchPledges(); // Refresh the data
             } else if (result.isDenied) {
@@ -409,11 +410,13 @@ const MoneyRequest = () => {
         console.log(record)
         const statusMap = {
           "1": { color: 'green', text: 'Send' },
-          "2": { color: 'red', text: 'Don`t send' }
+          "2": { color: 'red', text: 'Don`t send' },
+          "3": { color: 'orange', text: 'Cheque' },
+          "4": { color: 'purple', text: 'Amount' }
         };
-    
+
         const { color, text } = statusMap[record.money_rquest_status] || { color: 'blue', text: 'Pending' };
-    
+
         return <Tag color={color}>{text}</Tag>;
       }
     },
@@ -448,10 +451,11 @@ const MoneyRequest = () => {
 
           <Button
             type="link"
-            icon={<UserAddOutlined />}
+            icon={<EditOutlined />}
             onClick={() => {
               settotal_val(record.amount.toFixed(2))
-              showAssignModal(record.key)}}
+              showAssignModal(record.key)
+            }}
           />
           <Popconfirm
             title="Are you sure to delete this pledge?"
@@ -640,7 +644,7 @@ const MoneyRequest = () => {
 
       {/* Assign Executive Modal */}
       <Modal
-        title="Send Money Request to the Accounts"
+        title={localStorage.getItem('userRoleId') == '6' ? "Send Money Request to Manager" : "Send Money Request to the Accounts"}
         visible={isAssignModalVisible}
         onCancel={() => {
           setIsAssignModalVisible(false);
@@ -662,19 +666,32 @@ const MoneyRequest = () => {
       >
         <Select
           style={{ width: '100%' }}
-          placeholder="Send Money Request to the Accounts"
+          placeholder={localStorage.getItem('userRoleId') == '6' ? "Select Payment Type" : "Send Money Request to the Accounts"}
           loading={loading}
           onChange={(value) => setSelectedExecutive(value)}
           value={selectedExecutive}
         >
-          <Select.Option key={'1'} value={'1'}>
-            {'Send'}
-          </Select.Option>
-          <Select.Option key={'2'} value={'2'}>
-            {'Don`t Send'}
-          </Select.Option>
+          {localStorage.getItem('userRoleId') == '6' ? (
+            <>
+              <Select.Option key={'3'} value={'3'}>
+                {'Cheque'}
+              </Select.Option>
+              <Select.Option key={'4'} value={'4'}>
+                {'Amount'}
+              </Select.Option>
+            </>
+          ) : (
+            <>
+              <Select.Option key={'1'} value={'1'}>
+                {'Send'}
+              </Select.Option>
+              <Select.Option key={'2'} value={'2'}>
+                {'Don`t Send'}
+              </Select.Option>
+            </>
+          )}
         </Select>
-        <Input value={total_val} disabled/>
+        <Input value={total_val} disabled />
       </Modal>
 
 
