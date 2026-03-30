@@ -14,7 +14,7 @@ import {
   Col,
   Typography,
   Tag,
-  Statistic,Avatar
+  Statistic, Avatar
 } from 'antd';
 import {
   SearchOutlined,
@@ -43,7 +43,7 @@ const ReligionalManager = () => {
   });
   const [pledges, setPledges] = useState([]);
   const [loading, setLoading] = useState(false);
-   const [preview, setPreview] = useState(null);
+  const [preview, setPreview] = useState(null);
   const [pledgeFilters, setPledgeFilters] = useState({
     search: '',
     metal: '',
@@ -108,17 +108,7 @@ const ReligionalManager = () => {
   // Load mock data
   useEffect(() => {
     fetchPledges();
-    fetchExecutives()
-
-
-    const mockPledges = [
-
-    ];
-
-
-
-    setPledges(mockPledges);
-    setFilteredPledges(mockPledges);
+    fetchExecutives();
   }, []);
 
   useEffect(() => {
@@ -209,7 +199,7 @@ const ReligionalManager = () => {
     }
     try {
       setLoading(true);
-      await pledgeService.assigneRegigonalApproval(currentPledgeId, { regional_manager_status: selectedExecutive,user_id:localStorage.getItem("userId") });
+      await pledgeService.assigneRegigonalApproval(currentPledgeId, { regional_manager_status: selectedExecutive, user_id: localStorage.getItem("userId") });
       message.success('Updated successfully');
       fetchPledges()
       setIsAssignModalVisible(false);
@@ -402,14 +392,14 @@ const ReligionalManager = () => {
       width: 150,
       render: (_, record) => (
         <Space>
-        
+
 
           <Button
             type="link"
             icon={<UserAddOutlined />}
             onClick={() => showAssignModal(record.key)}
           />
-         
+
         </Space>
       )
     }
@@ -626,16 +616,16 @@ const ReligionalManager = () => {
             {'Rejected'}
           </Select.Option>
         </Select>
-         {selectedExecutive === "3" && (
-            <div style={{ marginTop: 16 }}>
-              <Input
-                placeholder="Enter Reason "
-                style={{ marginBottom: 8 }}
-               
-              />
-             
-            </div>
-          )}
+        {selectedExecutive === "3" && (
+          <div style={{ marginTop: 16 }}>
+            <Input
+              placeholder="Enter Reason "
+              style={{ marginBottom: 8 }}
+
+            />
+
+          </div>
+        )}
       </Modal>
 
 

@@ -24,6 +24,7 @@ import {
   FilePdfOutlined,
   CheckOutlined,
   CloseOutlined,
+  EditOutlined,
   UserAddOutlined
 } from '@ant-design/icons';
 import { uploadConfigUrl, uploadConfigUrl2 } from '../../api/apiUrl';
@@ -409,15 +410,16 @@ const PledgeSalesExecutive = () => {
               />
             </>
           )}
-          {record.approval === null && (
-            <Button
-              type="link"
-              icon={<UserAddOutlined />}
-              onClick={() => showAssignModal(record.key)}
-            />
-          )}
-
-         
+          {(record.approval === null ||
+            localStorage.getItem('userRoleId') == '6' ||
+            localStorage.getItem('role') == '6' ||
+            localStorage.getItem('userId') == record.money_request_id) && (
+              <Button
+                type="link"
+                icon={<EditOutlined />}
+                onClick={() => showAssignModal(record.key)}
+              />
+            )}
         </Space>
       )
     }
