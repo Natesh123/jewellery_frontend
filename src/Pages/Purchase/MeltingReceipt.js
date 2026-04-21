@@ -670,7 +670,7 @@ const MeltingReceipt = () => {
         const [form] = Form.useForm();
         const [pureWeight, setPureWeight] = useState(0);
         const [finalWeight, setFinalWeight] = useState(0);
-        const [isConvert, setIsConvert] = useState("no");
+        const [isConvert, setIsConvert] = useState("22k");
         const [goldSmithName, setGoldSmithName] = useState('');
         const [filteredProducts, setFilteredProducts] = useState([]);
         const [filteredSubProducts, setFilteredSubProducts] = useState([]);
@@ -699,9 +699,41 @@ const MeltingReceipt = () => {
         // Set default total weight when modal opens
         useEffect(() => {
             if (visible && meltJson) {
-                form.setFieldsValue({
-                    total_weight: parseFloat(meltJson.weight).toFixed(3)
-                });
+                try {
+                    const details = meltJson.metal_details ? JSON.parse(meltJson.metal_details) : null;
+
+                    if (details) {
+                        form.setFieldsValue({
+                            total_weight: parseFloat(details.weight || meltJson.weight || 0).toFixed(3),
+                            purity: details.purity,
+                            copper_weight: details.copper_weight,
+                            metal: details.metal,
+                            product: details.product,
+                            sub_product: details.sub_product,
+                            gold_smith_name: meltJson.assign_smith_name
+                        });
+
+                        setIsConvert(details.conversion_type || "22k");
+                        setPureWeight(parseFloat(details.pure_weight || 0));
+                        setFinalWeight(parseFloat(details.final_weight || 0));
+
+                        if (details.metal) filterProductsByMetal(details.metal);
+                        if (details.product) filterSubProductsByProduct(details.product);
+                    } else {
+                        form.setFieldsValue({
+                            total_weight: parseFloat(meltJson.weight || 0).toFixed(3),
+                            gold_smith_name: meltJson.assign_smith_name
+                        });
+                        setIsConvert("22k");
+                        setPureWeight(0);
+                        setFinalWeight(0);
+                    }
+                } catch (e) {
+                    console.error("Error parsing metal_details:", e);
+                    form.setFieldsValue({
+                        total_weight: parseFloat(meltJson.weight || 0).toFixed(3)
+                    });
+                }
             }
         }, [visible, meltJson]);
 
@@ -712,7 +744,7 @@ const MeltingReceipt = () => {
             setPureWeight(pw);
             setGoldSmithName(gold_smith_name)
 
-            if (isConvert === "yes" && copper_weight) {
+            if (isConvert === "24K" && copper_weight) {
                 setFinalWeight(pw + parseFloat(copper_weight));
             } else {
                 setFinalWeight(pw);
@@ -728,7 +760,8 @@ const MeltingReceipt = () => {
                 final_weight: parseFloat(finalWeight).toFixed(3),
                 metal: values.metal,
                 product: values.product,
-                sub_product: values.sub_product
+                sub_product: values.sub_product,
+                conversion_type: isConvert
             }
 
             const updateData = {
@@ -845,12 +878,12 @@ const MeltingReceipt = () => {
 
                     <Form.Item label="Conversion Type">
                         <Radio.Group value={isConvert} onChange={(e) => setIsConvert(e.target.value)}>
-                            <Radio value="yes">24k or 22k (Yes)</Radio>
-                            <Radio value="no">No</Radio>
+                            <Radio value="24K">24K (yes)</Radio>
+                            <Radio value="22k">22k (No)</Radio>
                         </Radio.Group>
                     </Form.Item>
 
-                    {isConvert === "yes" && (
+                    {isConvert === "24K" && (
                         <Form.Item
                             label="Copper Weight (g)"
                             name="copper_weight"
@@ -2031,35 +2064,6 @@ const MeltingReceipt = () => {
                 <Text>{getSubProductNameById(text)}</Text>
             )
         },
-
-        {
-            title: 'Product Type',
-            dataIndex: 'product_type',
-            key: 'product_type',
-            width: 120,
-            render: (text, record) => (
-                <Select
-                    placeholder="Select product type"
-                    style={{ width: '100%' }}
-                    value={text}
-                    onChange={(value) => handleMeltProductUpdate(record.id, 'product_type', value)}
-                    showSearch
-                    optionFilterProp="children"
-                    filterOption={(input, option) =>
-                        option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                    }
-                >
-
-                    <Option key="22k" value="22k">
-                        22k
-                    </Option>
-                    <Option key="24k" value="24k">
-                        24k
-                    </Option>
-                </Select>
-
-            )
-        },
         {
             title: 'Weight (g)',
             dataIndex: 'weight',
@@ -2228,7 +2232,7 @@ const MeltingReceipt = () => {
             width: 100,
             render: (record) => (
                 <Tag >
-                    {record.assign_smith_name }
+                    {record.assign_smith_name}
                 </Tag>
             )
         },

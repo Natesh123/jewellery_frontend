@@ -145,6 +145,114 @@ const Reports = () => {
     }
   };
 
+  const generateSalesPDF = (data, dateRange) => {
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.width;
+
+      // Header Section
+      doc.setFillColor(44, 62, 80); // Dark Blue
+      doc.rect(0, 0, pageWidth, 25, 'F');
+
+      doc.setFontSize(22);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SALES REPORT', pageWidth / 2, 15, { align: 'center' });
+
+      const dateText = dateRange ? `Date Range: ${dateRange[0].format('DD/MM/YYYY')} to ${dateRange[1].format('DD/MM/YYYY')}` : 'Full Report';
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(dateText, pageWidth / 2, 22, { align: 'center' });
+
+      // Table Data
+      const tableRows = data.map((item) => {
+        // Calculation logic for weights (consistent with Sales dashboard)
+        const weight = parseFloat(item.weight) || 0;
+        const dustWeight = parseFloat(item.dust_weight) || 0;
+        const purity = parseFloat(item.purity) || 100;
+        const netWeight = (weight - dustWeight) * (purity / 100);
+        const marginWeight = (netWeight * 3) / 100;
+        const finalWeight = netWeight - marginWeight;
+
+        // Sum payments for total amount if not explicitly present
+        const totalPaid = Array.isArray(item.sales_payments)
+          ? item.sales_payments.reduce((sum, p) => sum + parseFloat(p.completed_payment || 0), 0)
+          : 0;
+        const roundOff = Array.isArray(item.sales_payments)
+          ? item.sales_payments.reduce((sum, p) => sum + parseFloat(p.pending_payment || 0), 0)
+          : 0;
+
+        const finalAmount = totalPaid + roundOff;
+
+        return [
+          `#AMAMELT${item.id}`,
+          item.assign_customer_name || 'N/A',
+          item.created_at ? moment(item.created_at).format('D/M/YYYY') : 'N/A',
+          parseFloat(weight).toFixed(3),
+          parseFloat(finalWeight).toFixed(3),
+          `Rs.${finalAmount.toLocaleString('en-IN')}`,
+          item.assign_customer_payment_type || 'N/A',
+          'Assigned'
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 30,
+        head: [['Receipt No', 'Customer Name', 'Date', 'Gross Wt (g)', 'Pure Wt (g)', 'Amount (Rs.)', 'Payment Type', 'Status']],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: { fillColor: [212, 175, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8, cellPadding: 2, halign: 'left' },
+        columnStyles: {
+          3: { halign: 'right' },
+          4: { halign: 'right' },
+          5: { halign: 'right' },
+          6: { halign: 'center' },
+          7: { halign: 'center' }
+        }
+      });
+
+      // Summary
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFillColor(245, 245, 245);
+      doc.rect(15, finalY, pageWidth - 30, 30, 'F');
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(15, finalY, pageWidth - 30, 30, 'S');
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('SALES SUMMARY', 20, finalY + 8);
+
+      const totalSales = data.length;
+      const totalAmount = data.reduce((sum, item) => {
+        const totalPaid = Array.isArray(item.sales_payments) ? item.sales_payments.reduce((s, p) => s + parseFloat(p.completed_payment || 0), 0) : 0;
+        const roundOff = Array.isArray(item.sales_payments) ? item.sales_payments.reduce((s, p) => s + parseFloat(p.pending_payment || 0), 0) : 0;
+        return sum + (totalPaid + roundOff);
+      }, 0);
+
+      const totalPureWeight = data.reduce((sum, item) => {
+        const weight = parseFloat(item.weight) || 0;
+        const dustWeight = parseFloat(item.dust_weight) || 0;
+        const purity = parseFloat(item.purity) || 100;
+        const netWeight = (weight - dustWeight) * (purity / 100);
+        return sum + (netWeight * 0.97); // 3% margin
+      }, 0);
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total Sales: ${totalSales}`, 20, finalY + 15);
+      doc.text(`Total Weight: ${totalPureWeight.toFixed(3)} g (Pure)`, 100, finalY + 15);
+      doc.text(`Total Value: Rs.${totalAmount.toLocaleString('en-IN')}`, 180, finalY + 15);
+
+      doc.save(`Sales_Report_${moment().format('YYYYMMDD')}.pdf`);
+      message.success('Sales report generated successfully');
+    } catch (error) {
+      console.error('PDF error:', error);
+      message.error('Failed to generate PDF');
+    }
+  };
+
   const generatePledgePDF = (data, dateRange) => {
     try {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
@@ -341,6 +449,40 @@ const Reports = () => {
       } catch (error) {
         console.error('API Error:', error);
         message.error('Failed to fetch pledge quotations');
+      } finally {
+        setLoading(false);
+      }
+    } else if (record.title === 'Sales') {
+      try {
+        setLoading(true);
+        const params = {
+          page: 1,
+          limit: 100000,
+        };
+
+        if (dates) {
+          params.startDate = dates[0].format('YYYY-MM-DD');
+          params.endDate = dates[1].format('YYYY-MM-DD');
+        }
+
+        const response = await apiClient.get('/melting_purchase/create_melts_receipt', { params });
+        console.log('Sales API Response:', response);
+
+        let finalData = [];
+        if (response && response.data && Array.isArray(response.data.purchases)) {
+          finalData = response.data.purchases;
+        } else if (response && Array.isArray(response.data)) {
+          finalData = response.data;
+        }
+
+        if (finalData.length > 0) {
+          generateSalesPDF(finalData, dates);
+        } else {
+          message.error('No sales data found for the selected date range');
+        }
+      } catch (error) {
+        console.error('API Error:', error);
+        message.error('Failed to fetch sales data');
       } finally {
         setLoading(false);
       }

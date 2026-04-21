@@ -26,6 +26,7 @@ import Roles from './Pages/User_creation/Roles/Roles';
 import Permissions from './Pages/User_creation/Permissions/Permissions';
 import Receipt from './Pages/Receipt/Receipt';
 import Sales from './Pages/Sales/Sales';
+import SalesReceipt from './Pages/Sales/SalesReceipt';
 import Reports from './Pages/Reports/Reports';
 
 import Collections from './Pages/PledgeItems/Collection'
@@ -228,7 +229,11 @@ function App() {
               element={
                 isAuthenticated ? <Receipt /> : <Navigate to="/login" replace />
               }
-
+            />
+            <Route path="/sales-receipt/:meltId"
+              element={
+                isAuthenticated ? <SalesReceipt /> : <Navigate to="/login" replace />
+              }
             />
             <Route
               path="pledege_items"

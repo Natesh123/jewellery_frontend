@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Form,
     Input,
@@ -24,7 +25,8 @@ import {
     SearchOutlined,
     ReloadOutlined,
     InfoCircleOutlined,
-    CheckCircleOutlined, UserOutlined, CameraOutlined
+    CheckCircleOutlined, UserOutlined, CameraOutlined,
+    FilePdfOutlined
 } from '@ant-design/icons';
 import { roots } from '../../colorConstant';
 import Swal from 'sweetalert2';
@@ -51,6 +53,7 @@ const { Option } = Select;
 const { Title, Text } = Typography;
 
 const Sales = () => {
+    const navigate = useNavigate();
     const [form] = Form.useForm();
     const [customers, setCustomers] = useState([]);
     const [metals, setMetals] = useState([]);
@@ -115,8 +118,6 @@ const Sales = () => {
 
     const paymentModes = [
         { value: 'full', label: 'Full Payment' },
-        { value: 'partial', label: 'Partial Payment' },
-        { value: 'due', label: 'Due Payment' }
     ];
     // Add these state variables
     const [updatePaymentModalVisible, setUpdatePaymentModalVisible] = useState(false);
@@ -235,19 +236,29 @@ const Sales = () => {
     };
 
     const UpdatePaymentModal = () => {
-        const calculateTotalAmount = () => {
-            if (!selectedPaymentRecord) return 0;
+        if (!selectedPaymentRecord) return null;
 
-            return calculateProductValues(selectedPaymentRecord).amount;
-        };
+        const paymentDetails = selectedPaymentRecord.payment_details
 
-        const totalAmount = calculateTotalAmount();
+            ? (typeof selectedPaymentRecord.payment_details === 'string'
+                ? JSON.parse(selectedPaymentRecord.payment_details)
+                : selectedPaymentRecord.payment_details)
+            : null;
+
+        const baseTotal = calculateProductValues(selectedPaymentRecord).amount;
+        const roundOffAmount = parseFloat(selectedPaymentRecord?.round_off_amount || paymentDetails?.round_off_amount || 0);
+        const finalTotal = getFinalProductTotal(selectedPaymentRecord);
         const totalPaid = salesPayments.reduce((total, payment) =>
             total + parseFloat(payment.completed_payment || 0), 0);
 
-        const remainingDue = totalAmount - totalPaid;
-        const isFullyPaid = remainingDue <= 0;
+        const roundOffFromTable = salesPayments.reduce((total, payment) =>
+            total + parseFloat(payment.pending_payment || 0), 0);
+
+        const displayTotal = totalPaid + roundOffFromTable;
+        const isFullyPaid = true; // User considers the round-off settled
+
         const paymentColumns = [
+
             {
                 title: 'Payment ID',
                 dataIndex: 'id',
@@ -278,7 +289,7 @@ const Sales = () => {
                 render: (text) => <Text strong>₹{parseFloat(text || 0).toFixed(2)}</Text>
             },
             {
-                title: 'Due Amount (₹)',
+                title: 'Round Off (₹)',
                 dataIndex: 'pending_payment',
                 key: 'pending_payment',
                 width: 120,
@@ -318,7 +329,7 @@ const Sales = () => {
                     setSalesPayments([]);
                 }}
                 footer={null}
-                width={900}
+                width={1000}
                 maskClosable={false}
             >
                 {/* Payment Summary */}
@@ -327,7 +338,7 @@ const Sales = () => {
                         <Col span={6}>
                             <Statistic
                                 title="Total Amount"
-                                value={totalAmount}
+                                value={displayTotal}
                                 precision={2}
                                 prefix="₹"
                                 valueStyle={{ color: '#3f8600' }}
@@ -344,22 +355,25 @@ const Sales = () => {
                         </Col>
                         <Col span={6}>
                             <Statistic
-                                title="Remaining Due"
-                                value={remainingDue}
+                                title="Round Off"
+                                value={roundOffFromTable}
                                 precision={2}
                                 prefix="₹"
-                                valueStyle={{ color: remainingDue > 0 ? '#cf1322' : '#3f8600' }}
+                                valueStyle={{ color: '#cf1322' }}
                             />
                         </Col>
                         <Col span={6}>
                             <Statistic
                                 title="Payment Status"
-                                value={isFullyPaid ? 'Fully Paid' : 'Pending'}
-                                valueStyle={{ color: isFullyPaid ? '#3f8600' : '#faad14' }}
+                                value="Fully Paid"
+                                valueStyle={{ color: '#3f8600' }}
                             />
                         </Col>
                     </Row>
                 </Card>
+
+
+
 
                 {/* Payment History Table */}
                 <Card
@@ -393,10 +407,11 @@ const Sales = () => {
                                         <Text strong>₹{totalPaid.toFixed(2)}</Text>
                                     </Table.Summary.Cell>
                                     <Table.Summary.Cell>
-                                        <Text strong style={{ color: remainingDue > 0 ? '#cf1322' : '#3f8600' }}>
-                                            ₹{remainingDue.toFixed(2)}
+                                        <Text strong style={{ color: roundOffFromTable > 0 ? '#cf1322' : '#3f8600' }}>
+                                            ₹{roundOffFromTable.toFixed(2)}
                                         </Text>
                                     </Table.Summary.Cell>
+
                                     <Table.Summary.Cell colSpan={2}></Table.Summary.Cell>
                                 </Table.Summary.Row>
                             </Table.Summary>
@@ -408,24 +423,23 @@ const Sales = () => {
     };
 
     const CreatePaymentModal = () => {
-        const calculateTotalAmount = () => {
-            if (!selectedPaymentRecord) return 0;
-            return calculateProductValues(selectedPaymentRecord).amount;
-        };
+        if (!selectedPaymentRecord) return null;
 
-        const totalAmount = calculateTotalAmount();
+        const totalAmount = getFinalProductTotal(selectedPaymentRecord);
+
         const totalPaid = salesPayments.reduce((total, payment) =>
             total + parseFloat(payment.completed_payment || 0), 0);
 
-        const remainingDue = totalAmount - totalPaid;
+        const remainingDue = Math.max(0, totalAmount - totalPaid);
 
         const handleAmountChange = (value) => {
             const paid = parseFloat(value) || 0;
-            const newDue = remainingDue - paid;
+            const newDue = Math.max(0, remainingDue - paid);
             createPaymentForm.setFieldsValue({
-                due_amount: newDue > 0 ? newDue : 0
+                due_amount: newDue
             });
         };
+
 
 
         return (
@@ -657,7 +671,8 @@ const Sales = () => {
             // Set default values with calculated amount
             paymentForm.setFieldsValue({
                 payment_mode: 'full',
-                payment_type: 'cash',
+                payment_type: ['cash'],
+                payment_amounts: { cash: calculatedAmount },
                 total_amount: calculatedAmount,
                 due_amount: 0,
                 paid_amount: calculatedAmount
@@ -672,10 +687,21 @@ const Sales = () => {
         try {
             setPaymentLoading(true);
 
-            // Get current user info (you need to implement this based on your auth system)
+            // Validate total amount breakdown
+            const totalPaid = Object.values(values.payment_amounts || {}).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+            const roundOff = values.round_off_active ? (parseFloat(values.round_off_amount) || 0) : 0;
+            const expectedTotal = parseFloat(values.total_amount);
+
+            // Check if sum of payments matches expected total
+            if (Math.abs(totalPaid - expectedTotal) > 0.01) {
+                // If it doesn't match, maybe they want the total to include round off but haven't updated payments
+                // The expectedTotal from form is (sum of payments + round off)
+            }
+
+            // Get current user info
             const currentUser = {
-                id: 1, // Replace with actual user ID from your auth context
-                name: 'Admin User' // Replace with actual user name
+                id: 1,
+                name: 'Admin User'
             };
 
             // Prepare payment data
@@ -683,22 +709,28 @@ const Sales = () => {
                 assign_customer: selectedCustomer.id,
                 assign_customer_name: selectedCustomer.customer_name,
                 assigned_at: new Date().toISOString(),
-                assign_customer_payment_type: values.payment_type,
-                payment_details: {
+                assign_customer_payment_type: values.payment_type ? values.payment_type.join(', ') : '',
+                total_amount: expectedTotal, // Save at root level for persistence
+                round_off_amount: roundOff,   // Save at root level for persistence
+                payment_details: JSON.stringify({
                     user_id: selectedCustomer.id,
                     user_name: selectedCustomer.customer_name,
                     payment_mode: values.payment_mode,
-                    payment_type: values.payment_type,
-                    total_amount: parseFloat(values.total_amount),
-                    paid_amount: parseFloat(values.paid_amount),
-                    due_amount: parseFloat(values.due_amount),
+                    payment_type: values.payment_type ? values.payment_type.join(', ') : '',
+                    total_amount: expectedTotal,
+                    paid_amount: totalPaid,
+                    payment_amounts: values.payment_amounts,
+                    round_off_amount: roundOff,
+                    due_amount: Math.max(0, expectedTotal - totalPaid),
                     transaction_id: values.transaction_id,
                     cheque_number: values.cheque_number,
                     bank_name: values.bank_name,
                     payment_date: new Date().toISOString(),
                     notes: values.notes
-                }
+                })
             };
+
+
 
             // Update melt product with customer and payment information
             await updateMeltProduct(selectedMeltProduct.id, paymentData);
@@ -721,35 +753,35 @@ const Sales = () => {
         }
     };
     const handleAmountChange = (changedValues, allValues) => {
-        // Get the calculated amount from the product
-        const productCalc = calculations[selectedMeltProduct?.id] || {};
-        const calculatedTotal = productCalc.amount || parseFloat(allValues.total_amount) || 0;
+        if (changedValues.payment_amounts || changedValues.payment_type || changedValues.round_off_amount || changedValues.round_off_active !== undefined) {
+            const currentTypes = allValues.payment_type || [];
+            const currentAmounts = allValues.payment_amounts || {};
+            const roundOffActive = allValues.round_off_active || false;
+            const roundOffAmount = roundOffActive ? (parseFloat(allValues.round_off_amount) || 0) : 0;
 
-        let total = calculatedTotal;
-        let paid = parseFloat(allValues.paid_amount) || 0;
-        let due = 0;
+            // Clean up amounts for types that were removed
+            const cleanedAmounts = {};
+            currentTypes.forEach(type => {
+                cleanedAmounts[type] = currentAmounts[type] || 0;
+            });
 
+            const sumPayments = Object.values(cleanedAmounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+            const total = sumPayments + roundOffAmount;
 
-        // For partial payment, calculate due amount
-        paid = parseFloat(changedValues.paid_amount) || 0;
-        due = total - paid;
-
-
-        // Ensure due amount is not negative
-        due = due > 0 ? due : 0;
-
-        // Update total amount with calculated value
-        paymentForm.setFieldsValue({
-            total_amount: total,
-            paid_amount: paid,
-            due_amount: due
-        });
+            paymentForm.setFieldsValue({
+                payment_amounts: cleanedAmounts,
+                total_amount: total,
+                paid_amount: total,
+                due_amount: 0
+            });
+        }
     };
+
 
 
     // Update the PaymentModal component to handle payment mode changes
     const PaymentModal = () => {
-        const [selectedPaymentType, setSelectedPaymentType] = useState('cash');
+        const [selectedPaymentType, setSelectedPaymentType] = useState(['cash']);
         const [selectedPaymentMode, setSelectedPaymentMode] = useState('full');
 
         const handlePaymentModeChange = (value) => {
@@ -922,8 +954,8 @@ const Sales = () => {
                             >
                                 <Select
                                     placeholder="Select Payment Type"
+                                    mode="multiple"
                                     onChange={(value) => setSelectedPaymentType(value)}
-
                                 >
                                     {paymentTypes.map(type => (
                                         <Option key={type.value} value={type.value}>
@@ -936,66 +968,67 @@ const Sales = () => {
                         </Col>
                     </Row>
 
-                    <Row gutter={16}>
-                        {/* Total Amount */}
-                        <Col span={8}>
-                            <Form.Item
-                                name="total_amount"
-                                label="Total Amount (₹)"
-                                rules={[{ required: true, message: 'Please enter total amount' }]}
-                            >
-                                <InputNumber
-                                    style={{ width: '100%' }}
-                                    placeholder="Total Amount"
-                                    min={0}
-                                    step={0.01}
-                                    precision={2}
-                                    disabled
-                                />
-                            </Form.Item>
-                        </Col>
 
-                        {/* Paid Amount */}
-                        <Col span={8}>
-                            <Form.Item
-                                name="paid_amount"
-                                label="Paid Amount (₹)"
-                                rules={[{
-                                    required: true,
-                                    message: 'Please enter paid amount'
-                                }]}
-                            >
-                                <InputNumber
-                                    style={{ width: '100%' }}
-                                    placeholder="Paid Amount"
-                                    min={0}
-                                    step={0.01}
-                                    precision={2}
 
-                                />
-                            </Form.Item>
-                        </Col>
+                    {/* Amount Breakdown for each Payment Type */}
+                    <Divider orientation="left" style={{ margin: '12px 0' }}>Payment Breakdown</Divider>
+                    <div style={{ padding: '0 8px 16px 8px' }}>
+                        {selectedPaymentType.map(type => (
+                            <Row gutter={16} key={type} align="middle" style={{ marginBottom: 12 }}>
+                                <Col span={14}>
+                                    <Text strong>
+                                        <span style={{ marginRight: 8 }}>{paymentTypes.find(t => t.value === type)?.icon}</span>
+                                        {paymentTypes.find(t => t.value === type)?.label} Amount (₹)
+                                    </Text>
+                                </Col>
+                                <Col span={10}>
+                                    <Form.Item
+                                        name={['payment_amounts', type]}
+                                        noStyle
+                                        rules={[{ required: true, message: 'Required' }]}
+                                    >
+                                        <InputNumber
+                                            style={{ width: '100%' }}
+                                            placeholder="Enter amount"
+                                            min={0}
+                                            step={0.01}
+                                            precision={2}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        ))}
 
-                        {/* Due Amount */}
-                        <Col span={8}>
-                            <Form.Item
-                                name="due_amount"
-                                label="Due Amount (₹)"
-                            >
-                                <InputNumber
-                                    style={{ width: '100%' }}
-                                    placeholder="Due Amount"
-                                    min={0}
-                                    step={0.01}
-                                    precision={2}
-                                    disabled
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                        {/* Round Off Section */}
+                        <Divider dashed style={{ margin: '8px 0' }} />
+                        <Row gutter={16} align="middle">
+                            <Col span={14}>
+                                <Form.Item name="round_off_active" valuePropName="checked" noStyle>
+                                    <Checkbox>Round Off / Adjustment Amount (₹)</Checkbox>
+                                </Form.Item>
+                            </Col>
+                            <Col span={10}>
+                                <Form.Item noStyle shouldUpdate={(prev, curr) => prev.round_off_active !== curr.round_off_active}>
+                                    {({ getFieldValue }) => (
+                                        getFieldValue('round_off_active') && (
+                                            <Form.Item name="round_off_amount" noStyle rules={[{ required: true, message: 'Value required' }]}>
+                                                <InputNumber
+                                                    style={{ width: '100%' }}
+                                                    placeholder="Amount (+/-)"
+                                                    step={0.01}
+                                                    precision={2}
+                                                />
+                                            </Form.Item>
+                                        )
+                                    )}
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                    </div>
+
 
                     {/* Conditional Fields based on Payment Type */}
-                    {(selectedPaymentType === 'gpay' || selectedPaymentType === 'card') && selectedPaymentMode !== 'due' && (
+                    {(selectedPaymentType.includes('gpay') || selectedPaymentType.includes('card')) && selectedPaymentMode !== 'due' && (
                         <Form.Item
                             name="transaction_id"
                             label="Transaction ID"
@@ -1005,7 +1038,7 @@ const Sales = () => {
                         </Form.Item>
                     )}
 
-                    {selectedPaymentType === 'cheque' && selectedPaymentMode !== 'due' && (
+                    {selectedPaymentType.includes('cheque') && selectedPaymentMode !== 'due' && (
                         <Row gutter={16}>
                             <Col span={12}>
                                 <Form.Item
@@ -1027,6 +1060,72 @@ const Sales = () => {
                             </Col>
                         </Row>
                     )}
+
+                    <Row gutter={16} style={{ marginTop: 16 }}>
+                        {/* Total Amount */}
+                        <Col span={24}>
+                            <Form.Item
+                                name="total_amount"
+                                label={<Text strong style={{ color: roots.gold[600] }}>Calculated Total Amount (₹)</Text>}
+                                rules={[{ required: true, message: 'Please enter total amount' }]}
+                            >
+                                <InputNumber
+                                    style={{
+                                        width: '100%',
+                                        backgroundColor: '#f6ffed',
+                                        fontWeight: 'bold',
+                                        color: '#3f8600',
+                                        borderColor: '#b7eb8f'
+                                    }}
+                                    placeholder="Total Amount"
+                                    min={0}
+                                    step={0.01}
+                                    precision={2}
+                                    disabled
+                                />
+                            </Form.Item>
+                        </Col>
+
+                        {/* Remaining Amount */}
+                        <Form.Item noStyle shouldUpdate>
+                            {({ getFieldValue }) => {
+                                if (getFieldValue('round_off_active')) return null;
+
+                                const baseAmount = calculations[selectedMeltProduct?.id]?.amount || 0;
+                                const roundOff = getFieldValue('round_off_active') ? (getFieldValue('round_off_amount') || 0) : 0;
+                                const adjustedTotal = baseAmount + roundOff;
+
+                                const paymentAmounts = getFieldValue('payment_amounts') || {};
+                                const sumPayments = Object.values(paymentAmounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+
+                                const remainingAmount = adjustedTotal - sumPayments;
+                                return (
+                                    <Col span={24}>
+                                        <Form.Item
+                                            label={<Text strong style={{ color: Math.abs(remainingAmount) > 0.01 ? '#cf1322' : '#3f8600' }}>Remaining Amount (₹)</Text>}
+                                        >
+                                            <InputNumber
+                                                style={{
+                                                    width: '100%',
+                                                    backgroundColor: Math.abs(remainingAmount) > 0.01 ? '#fff1f0' : '#f6ffed',
+                                                    fontWeight: 'bold',
+                                                    color: Math.abs(remainingAmount) > 0.01 ? '#cf1322' : '#3f8600',
+                                                    borderColor: Math.abs(remainingAmount) > 0.01 ? '#ffa39e' : '#b7eb8f'
+                                                }}
+                                                value={parseFloat(remainingAmount.toFixed(2))}
+                                                precision={2}
+                                                disabled
+                                                prefix="₹"
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                );
+                            }}
+                        </Form.Item>
+
+
+
+                    </Row>
 
                     {/* Additional Notes */}
 
@@ -1054,7 +1153,7 @@ const Sales = () => {
                         </div>
                     </Form.Item>
                 </Form>
-            </Modal>
+            </Modal >
         );
     };
 
@@ -1186,7 +1285,9 @@ const Sales = () => {
 
     // Update calculateProductValues to use the ref
     const calculateProductValues = (product) => {
+        if (!product) return { netWeight: 0, marginWeight: 0, finalWeight: 0, rate: 0, amount: 0 };
         const weight = parseFloat(product.weight) || 0;
+
         const meltWeight = parseFloat(product.melt_weight) || 0;
         const dustWeight = parseFloat(product.dust_weight) || 0;
         const purity = parseFloat(product.purity) || 100;
@@ -1216,6 +1317,33 @@ const Sales = () => {
             amount: parseFloat(amount.toFixed(2))
         };
     };
+
+    const getFinalProductTotal = (record) => {
+        if (!record) return 0;
+
+        // 1. Check root total_amount
+        if (record.total_amount) {
+            return parseFloat(record.total_amount);
+        }
+
+        const paymentDetails = record.payment_details
+            ? (typeof record.payment_details === 'string'
+                ? JSON.parse(record.payment_details)
+                : record.payment_details)
+            : null;
+
+        // 2. Check payment_details
+        if (paymentDetails && paymentDetails.total_amount) {
+            return parseFloat(paymentDetails.total_amount);
+        }
+
+        // 3. Fallback: Base Price + stored Round Off
+        const basePrice = calculateProductValues(record).amount;
+        const roundOff = parseFloat(record.round_off_amount || paymentDetails?.round_off_amount || 0);
+
+        return basePrice + roundOff;
+    };
+
 
 
     // Add this function to handle manual refresh
@@ -1395,6 +1523,42 @@ const Sales = () => {
             setIsMeltTableLoading(false);
         }
     };
+    const filteredMeltProducts = React.useMemo(() => {
+        return meltProducts.filter(item => {
+            // Search filter
+            const searchMatch = !purchaseFilters.search ||
+                item.id.toString().includes(purchaseFilters.search) ||
+                (item.customer_name && item.customer_name.toLowerCase().includes(purchaseFilters.search.toLowerCase())) ||
+                (item.metal_details && item.metal_details.toLowerCase().includes(purchaseFilters.search.toLowerCase()));
+
+            // Metal filter
+            const metalMatch = !purchaseFilters.metal || item.metal === purchaseFilters.metal;
+
+            // Status filter
+            const statusMatch = !purchaseFilters.status ||
+                (purchaseFilters.status === '1' && item.melt_details !== null) ||
+                (purchaseFilters.status === '0' && item.melt_details === null);
+
+            // Product Type (Conversion Type) filter
+            let productTypeMatch = true;
+            if (purchaseFilters.productType) {
+                try {
+                    const details = item.metal_details ? JSON.parse(item.metal_details) : null;
+                    if (purchaseFilters.productType === 'old ornaments') {
+                        // Match if it's NOT 22k and NOT 24K
+                        productTypeMatch = !details || (details.conversion_type !== '22k' && details.conversion_type !== '24K');
+                    } else {
+                        productTypeMatch = details && details.conversion_type === purchaseFilters.productType;
+                    }
+                } catch (e) {
+                    productTypeMatch = (purchaseFilters.productType === 'old ornaments');
+                }
+            }
+
+            return searchMatch && metalMatch && statusMatch && productTypeMatch;
+        });
+    }, [meltProducts, purchaseFilters]);
+
     // Add this function to force refresh calculations
     const forceRefreshCalculations = () => {
         if (meltProducts.length > 0) {
@@ -2013,17 +2177,59 @@ const Sales = () => {
             title: 'Calculated Amount (₹)',
             key: 'calculated_amount',
             width: 150,
-            render: (_, record) => (
-                <div>
-                    <Text strong style={{ color: '#3f8600', fontSize: '14px' }}>
-                        ₹{(calculations[record.id]?.amount || 0).toFixed(2)}
-                    </Text>
-                    <div style={{ fontSize: '10px', color: '#8c8c8c' }}>
-                        @ ₹{liveGoldRate.toFixed(2)}/g
+            render: (_, record) => {
+                let baseAmount = calculations[record.id]?.amount || 0;
+                let displayAmount = baseAmount.toFixed(2);
+                let isFinalTotal = false;
+
+                // 1. Check root total_amount
+                if (record.total_amount && parseFloat(record.total_amount) > 0) {
+                    displayAmount = parseFloat(record.total_amount).toFixed(2);
+                    isFinalTotal = true;
+                }
+                // 2. Check payment_details
+                else if (record.payment_details) {
+                    try {
+                        const details = typeof record.payment_details === 'string'
+                            ? JSON.parse(record.payment_details)
+                            : record.payment_details;
+                        if (details.total_amount) {
+                            displayAmount = parseFloat(details.total_amount).toFixed(2);
+                            isFinalTotal = true;
+                        } else if (details.round_off_amount) {
+                            displayAmount = (baseAmount + parseFloat(details.round_off_amount)).toFixed(2);
+                            isFinalTotal = true;
+                        }
+                    } catch (e) { }
+                }
+
+                // 3. Last fallback: Check root round_off_amount
+                if (!isFinalTotal && record.round_off_amount) {
+                    displayAmount = (baseAmount + parseFloat(record.round_off_amount)).toFixed(2);
+                    isFinalTotal = true;
+                }
+
+                return (
+                    <div>
+                        <Text strong style={{ color: '#3f8600', fontSize: '14px' }}>
+                            ₹{displayAmount}
+                        </Text>
+                        {!isFinalTotal && (
+                            <div style={{ fontSize: '10px', color: '#8c8c8c' }}>
+                                @ ₹{liveGoldRate.toFixed(2)}/g
+                            </div>
+                        )}
+                        {isFinalTotal && (
+                            <div style={{ fontSize: '10px', color: '#1890ff' }}>
+                                (Final Total)
+                            </div>
+                        )}
                     </div>
-                </div>
-            )
+                );
+            }
         },
+
+
         {
             title: 'Assigned To',
             dataIndex: 'assign_customer_name',
@@ -2061,14 +2267,22 @@ const Sales = () => {
                         Details
                     </Button>
                     {record.assign_customer > 0 && (
-                        <Button
-                            type="link"
-                            size="small"
-                            onClick={() => handleUpdatePayment(record)}
-                            icon={<CheckCircleOutlined />}
-                        >
-                            Update Payment
-                        </Button>
+                        <>
+                            <Button
+                                type="link"
+                                size="small"
+                                onClick={() => handleUpdatePayment(record)}
+                                icon={<CheckCircleOutlined />}
+                            >
+                                Update Payment
+                            </Button>
+                            <Button
+                                type="link"
+                                size="small"
+                                icon={<FilePdfOutlined style={{ color: '#ff4d4f' }} />}
+                                onClick={() => navigate(`/sales-receipt/${record.id}`)}
+                            />
+                        </>
                     )}
 
                     <Button
@@ -2082,12 +2296,14 @@ const Sales = () => {
                         }}
                         icon={<UserOutlined />}
                     >
-                        {record.assign_customer > 0 ? 'Assign Customer' : 'Assign Customer'}
+                        {record.assign_customer > 0 ? 'Assigned' : 'Assign Customer'}
                     </Button>
                 </Space>
             )
         }
     ];
+
+
     // Add these handler functions
     const handleEditMeltProduct = (record) => {
         // Implement edit functionality
@@ -2157,50 +2373,42 @@ const Sales = () => {
                         </Text>
                     </Col>
                     <Col span={12} style={{ textAlign: 'right' }}>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={handleRefreshGoldRate}
-                            loading={loading}
-                        >
-                            Refresh Gold Rate
-                        </Button>
+                        <Space size="middle">
+                            <Select
+                                showSearch
+                                placeholder={
+                                    <span>
+                                        <SearchOutlined style={{ marginRight: 6, color: '#bfbfbf' }} />
+                                        Select product type
+                                    </span>
+                                }
+                                value={purchaseFilters.productType || undefined}
+                                onChange={(value) => setPurchaseFilters({ ...purchaseFilters, productType: value })}
+                                allowClear
+                                style={{
+                                    width: 200,
+                                    borderRadius: 8,
+                                    textAlign: 'left'
+                                }}
+                                filterOption={(input, option) =>
+                                    option?.children?.toLowerCase().includes(input.toLowerCase())
+                                }
+                            >
+                                <Option value="22k">22k</Option>
+                                <Option value="24K">24K</Option>
+                                <Option value="old ornaments">old ornaments</Option>
+                            </Select>
+                            <Button
+                                icon={<ReloadOutlined />}
+                                onClick={handleRefreshGoldRate}
+                                loading={loading}
+                            >
+                                Refresh Gold Rate
+                            </Button>
+                        </Space>
                     </Col>
                 </Row>
             </Card>
-
-            <Card style={{ marginBottom: 16 }}>
-                <Row gutter={16} align="middle">
-                    <Col span={12}>
-                        <Title level={3} style={{ margin: 0 }}>Sales</Title>
-                    </Col>
-                    <Col span={12} style={{ textAlign: 'right' }}>
-                        <Select
-                            showSearch
-                            placeholder={
-                                <span>
-                                    <SearchOutlined style={{ marginRight: 6, color: '#bfbfbf' }} />
-                                    Select product type
-                                </span>
-                            }
-                            value={purchaseFilters.productType || undefined}
-                            onChange={(value) => setPurchaseFilters({ ...purchaseFilters, productType: value })}
-                            allowClear
-                            style={{
-                                width: 200,
-                                borderRadius: 8
-                            }}
-                            filterOption={(input, option) =>
-                                option?.children?.toLowerCase().includes(input.toLowerCase())
-                            }
-                        >
-                            <Option value="22k">22k</Option>
-                            <Option value="24k">24k</Option>
-                            <Option value="old ornaments">old ornaments</Option>
-                        </Select>
-                    </Col>
-                </Row>
-            </Card>
-
             {/* Purchase Filters */}
             <Card style={{ marginBottom: 16 }}>
                 <Row gutter={[16, 16]} align="middle">
@@ -2258,7 +2466,7 @@ const Sales = () => {
             <Card>
                 <Table
                     columns={meltProductColumns}
-                    dataSource={meltProducts}
+                    dataSource={filteredMeltProducts}
                     pagination={{
                         current: meltPagination.current,
                         pageSize: meltPagination.pageSize,
