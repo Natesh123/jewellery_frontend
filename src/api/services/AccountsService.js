@@ -83,3 +83,87 @@ export const createAccountHead = async (data) => {
       throw error; 
     }
   };
+
+export const createOpeningBalance = async (data) => {
+    try {
+        const response = await api.post(accountsEndpoints.CREATE_OPENING_BALANCE, data);
+        return response;
+    } catch (error) {
+        console.error('Create opening balance error:', error);
+        throw error;
+    }
+};
+
+export const getAllOpeningBalances = async (data) => {
+    try {
+        const response = await api.get(accountsEndpoints.READ_OPENING_BALANCE, {
+            params: data
+        });
+        return response;
+    } catch (error) {
+        console.error('Get opening balances error:', error);
+        throw error;
+    }
+};
+
+export const updateOpeningBalance = async (id, data) => {
+    try {
+        const response = await api.put(`${accountsEndpoints.UPDATE_OPENING_BALANCE}/${id}`, data);
+        return response;
+    } catch (error) {
+        console.error('Update opening balance error:', error);
+        throw error;
+    }
+};
+
+export const deleteOpeningBalance = async (id) => {
+    try {
+        const response = await api.delete(`${accountsEndpoints.DELETE_OPENING_BALANCE}/${id}`);
+        return response;
+    } catch (error) {
+        console.error('Delete opening balance error:', error);
+        throw error;
+    }
+};
+
+export const createOpeningStock = async (data) => {
+    try {
+        const response = await api.post(accountsEndpoints.CREATE_OPENING_STOCK, data);
+        return response;
+    } catch (error) {
+        console.error('Create opening stock error:', error);
+        throw error;
+    }
+};
+
+export const getAllOpeningStocks = async (data) => {
+    try {
+        const response = await api.get(accountsEndpoints.READ_OPENING_STOCK, {
+            params: data
+        });
+        return response;
+    } catch (error) {
+        console.error('Get opening stocks error:', error);
+        throw error;
+    }
+};
+
+export const updateOpeningStock = async (id, data) => {
+    try {
+        const response = await api.put(`${accountsEndpoints.UPDATE_OPENING_STOCK}/${id}`, data);
+        return response;
+    } catch (error) {
+        console.error('Update opening stock error:', error);
+        throw error;
+    }
+};
+
+export const deleteOpeningStock = async (id) => {
+    try {
+        const response = await api.delete(`${accountsEndpoints.DELETE_OPENING_STOCK}/${id}`);
+        return response;
+    } catch (error) {
+        console.error('Delete opening stock error:', error);
+        throw error;
+    }
+};

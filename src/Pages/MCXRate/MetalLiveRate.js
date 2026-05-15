@@ -54,21 +54,37 @@ const MetalLiveRate = () => {
                 }));
               
 
-                setPrices(formattedPrices);
-                setLastUpdated(new Date());
-
-                // Initialize price changes for these metals
-                const changes = {};
-                formattedPrices.forEach(metal => {
-                    const key = `${metal.metal}-${metal.carat || 'default'}`;
-                    if (!priceChanges[key]) {
-                        changes[key] = {
-                            direction: Math.random() > 0.5 ? 'up' : 'down',
-                            percentage: (Math.random() * 5).toFixed(2)
-                        };
-                    }
+                setPrices(prevPrices => {
+                    // Calculate price changes based on previous prices
+                    const changes = {};
+                    formattedPrices.forEach(newMetal => {
+                        const key = `${newMetal.metal}-${newMetal.carat || 'default'}`;
+                        const prevMetal = prevPrices.find(p => `${p.metal}-${p.carat || 'default'}` === key);
+                        
+                        if (prevMetal) {
+                            if (newMetal.price > prevMetal.price) {
+                                changes[key] = {
+                                    direction: 'up',
+                                    percentage: (((newMetal.price - prevMetal.price) / prevMetal.price) * 100).toFixed(2)
+                                };
+                            } else if (newMetal.price < prevMetal.price) {
+                                changes[key] = {
+                                    direction: 'down',
+                                    percentage: (((prevMetal.price - newMetal.price) / prevMetal.price) * 100).toFixed(2)
+                                };
+                            } else {
+                                // If price is the same, keep previous direction if any, or stable
+                                changes[key] = prevPrices.length > 0 ? (priceChanges[key] || { direction: 'stable', percentage: '0.00' }) : { direction: 'stable', percentage: '0.00' };
+                            }
+                        } else {
+                            changes[key] = { direction: 'stable', percentage: '0.00' };
+                        }
+                    });
+                    
+                    setPriceChanges(prev => ({ ...prev, ...changes }));
+                    return formattedPrices;
                 });
-                setPriceChanges(prev => ({ ...prev, ...changes }));
+                setLastUpdated(new Date());
             } else {
                 message.error('No data received from live-rates endpoint');
             }
@@ -85,41 +101,20 @@ const MetalLiveRate = () => {
         fetchMetalPrices();
     }, []);
 
-    // Auto-refresh effect - every 12 seconds for API data
+    // Auto-refresh effect - every 1 second for API data
     useEffect(() => {
         let interval;
         if (autoRefresh) {
             interval = setInterval(() => {
                 fetchMetalPrices();
-            }, 12000);
+            }, 1000);
         }
         return () => clearInterval(interval);
     }, [autoRefresh]);
 
-    // Update price changes every second (static simulation)
+    // Removed simulation effect to use real API data comparison
     useEffect(() => {
-        const changeInterval = setInterval(() => {
-            setPriceChanges(prevChanges => {
-                const updatedChanges = { ...prevChanges };
-
-                Object.keys(updatedChanges).forEach(key => {
-                    if (Math.random() < 0.1) {
-                        updatedChanges[key].direction =
-                            updatedChanges[key].direction === 'up' ? 'down' : 'up';
-                    }
-
-                    const currentChange = parseFloat(updatedChanges[key].percentage);
-                    const fluctuation = (Math.random() * 0.5) - 0.25;
-                    let newChange = currentChange + fluctuation;
-                    newChange = Math.max(0.1, Math.min(5, newChange));
-                    updatedChanges[key].percentage = newChange.toFixed(2);
-                });
-
-                return updatedChanges;
-            });
-        }, 1000);
-
-        return () => clearInterval(changeInterval);
+        // Simulation interval removed
     }, []);
 
     // Toggle full screen mode
@@ -231,7 +226,7 @@ const MetalLiveRate = () => {
             <div className="metal-rates-header">
                 <Title level={isFullScreen ? 1 : 2} className="title">
                     Live Metal Prices
-                    <Tooltip title="Real data updates every 12 seconds, price changes update every second. ">
+                    <Tooltip title="Real data updates every second.">
                         <InfoCircleOutlined style={{ marginLeft: 10, fontSize: isFullScreen ? '28px' : '20px' }} />
                     </Tooltip>
                 </Title>
@@ -281,7 +276,7 @@ const MetalLiveRate = () => {
             ) : (
                 <>
                     <Alert
-                        message={`Last updated: ${lastUpdated.toLocaleTimeString()}| Price changes update every second`}
+                        message={`Last updated: ${lastUpdated.toLocaleTimeString()} | Data updates every second`}
                         type="info"
                         showIcon
                         style={{
@@ -353,7 +348,7 @@ const MetalLiveRate = () => {
                                                     value={formatPrice(metal.effective_rate)}
                                                     precision={2}
                                                     valueStyle={{
-                                                        color: metalColor,
+                                                        color: changeData.direction === 'up' ? '#f5222d' : changeData.direction === 'down' ? '#52c41a' : metalColor,
                                                         fontSize: isFullScreen ? '32px' : '24px',
                                                         fontWeight: 'bold'
                                                     }}

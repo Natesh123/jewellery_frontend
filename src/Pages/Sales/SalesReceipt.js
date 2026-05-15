@@ -234,7 +234,8 @@ const SalesReceipt = () => {
     // Total Amount is the base value from calculation or record
     const baseTotal = parseFloat(record.calculated?.amount || record.total_amount || 0);
     // Final Amount = Base + Round Off (Always sum for visual consistency on report)
-    const finalAmount = baseTotal + roundOff;
+    // Final Amount = Base + GST + Round Off
+    const finalAmount = baseTotal + parseFloat(record.cgst || 0) + parseFloat(record.sgst || 0) + roundOff;
 
     const productTableData = [
         {
@@ -344,6 +345,19 @@ const SalesReceipt = () => {
                                         <Row gutter={[8, 8]}>
                                             <Col span={12}><Text strong>Total Amount:</Text></Col>
                                             <Col span={12} style={{ textAlign: 'right' }}><Text strong>₹{baseTotal.toFixed(2)}</Text></Col>
+                                            
+                                            {parseFloat(record.cgst || 0) > 0 && (
+                                                <>
+                                                    <Col span={12}><Text strong>CGST (1.5%):</Text></Col>
+                                                    <Col span={12} style={{ textAlign: 'right' }}><Text strong>₹{parseFloat(record.cgst).toFixed(2)}</Text></Col>
+                                                </>
+                                            )}
+                                            {parseFloat(record.sgst || 0) > 0 && (
+                                                <>
+                                                    <Col span={12}><Text strong>SGST (1.5%):</Text></Col>
+                                                    <Col span={12} style={{ textAlign: 'right' }}><Text strong>₹{parseFloat(record.sgst).toFixed(2)}</Text></Col>
+                                                </>
+                                            )}
 
                                             <Col span={12}><Text strong>Round Off (+): </Text></Col>
                                             <Col span={12} style={{ textAlign: 'right' }}><Text strong>₹{roundOff.toFixed(2)}</Text></Col>

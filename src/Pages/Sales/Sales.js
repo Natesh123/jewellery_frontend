@@ -87,6 +87,7 @@ const Sales = () => {
     const [subProductOptions, setSubProductOptions] = useState({});
     const [purchaseDetailsVisible, setPurchaseDetailsVisible] = useState(false);
     const [selectedPurchasesJson, setSelectedPurchasesJson] = useState('');
+    const [selectedMeltRecord, setSelectedMeltRecord] = useState(null);
     // Add these state variables at the top of your component
     const [customerModalVisible, setCustomerModalVisible] = useState(false);
     const [selectedMeltProduct, setSelectedMeltProduct] = useState(null);
@@ -1391,6 +1392,13 @@ const Sales = () => {
         };
 
         initializeData();
+
+        // Set up 1-second live refresh for rates
+        const interval = setInterval(() => {
+            fetchMCXData();
+        }, 1000);
+
+        return () => clearInterval(interval);
     }, []);
 
     // Fetch options for dropdowns
@@ -1420,14 +1428,16 @@ const Sales = () => {
             console.error('Error fetching metals:', error);
         }
     };
-    const handleViewPurchaseDetails = (purchasesJson) => {
-        setSelectedPurchasesJson(purchasesJson);
+    const handleViewPurchaseDetails = (record) => {
+        setSelectedPurchasesJson(record.purchases);
+        setSelectedMeltRecord(record);
         setPurchaseDetailsVisible(true);
     };
 
     const handleClosePurchaseDetails = () => {
         setPurchaseDetailsVisible(false);
         setSelectedPurchasesJson('');
+        setSelectedMeltRecord(null);
     };
     const fetchProductOptions = async () => {
         try {
@@ -1675,16 +1685,39 @@ const Sales = () => {
             </Modal>
         );
     };
-    const PurchaseDetailsModal = ({ purchasesJson, visible, onCancel }) => {
+    const PurchaseDetailsModal = ({ purchasesJson, visible, onCancel, record }) => {
         const [purchaseData, setPurchaseData] = useState([]);
         const [loading, setLoading] = useState(false);
+        const [isSaving, setIsSaving] = useState(false);
+        const [cgst, setCgst] = useState(0);
+        const [sgst, setSgst] = useState(0);
+        const [roundOff, setRoundOff] = useState(0);
 
         useEffect(() => {
             if (visible && purchasesJson) {
                 setLoading(true);
                 try {
                     const parsedData = JSON.parse(purchasesJson || '[]');
-                    setPurchaseData(Array.isArray(parsedData) ? parsedData : []);
+                    const data = Array.isArray(parsedData) ? parsedData : [];
+
+                    // Initialize rate if missing (derived from amount / gross_weight)
+                    const initializedData = data.map(item => {
+                        const amount = parseFloat(item.amount) || 0;
+                        const weight = parseFloat(item.gross_weight) || 0;
+                        if (!item.rate && weight > 0) {
+                            return { ...item, rate: (amount / weight).toFixed(2) };
+                        }
+                        return item;
+                    });
+
+                    setPurchaseData(initializedData);
+
+                    // Initialize tax fields from record
+                    if (record) {
+                        setCgst(record.cgst || 0);
+                        setSgst(record.sgst || 0);
+                        setRoundOff(record.round_off || 0);
+                    }
                 } catch (error) {
                     console.error('Error parsing purchase details:', error);
                     setPurchaseData([]);
@@ -1692,7 +1725,58 @@ const Sales = () => {
                     setLoading(false);
                 }
             }
-        }, [visible, purchasesJson]);
+        }, [visible, purchasesJson, record]);
+
+        const handleUpdatePurchaseItem = (index, field, value) => {
+            const newData = [...purchaseData];
+            const item = { ...newData[index], [field]: value };
+
+            if (field === 'rate' || field === 'gross_weight') {
+                const rate = parseFloat(field === 'rate' ? value : item.rate) || 0;
+                const weight = parseFloat(field === 'gross_weight' ? value : item.gross_weight) || 0;
+                item.amount = (rate * weight).toFixed(2);
+            } else if (field === 'amount') {
+                const amount = parseFloat(value) || 0;
+                const weight = parseFloat(item.gross_weight) || 0;
+                if (weight > 0) {
+                    item.rate = (amount / weight).toFixed(2);
+                }
+            }
+
+            newData[index] = item;
+            setPurchaseData(newData);
+        };
+
+        useEffect(() => {
+            const total = purchaseData.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+            const gst = (total * 0.015).toFixed(2);
+            setCgst(parseFloat(gst));
+            setSgst(parseFloat(gst));
+        }, [purchaseData]);
+
+        const handleSaveChanges = async () => {
+            if (!record?.id) return;
+
+            setIsSaving(true);
+            try {
+                const totalWt = purchaseData.reduce((total, product) => total + parseFloat(product.gross_weight || 0), 0).toFixed(3);
+                await updateMeltProduct(record.id, {
+                    purchases: JSON.stringify(purchaseData),
+                    weight: totalWt,
+                    cgst: cgst || 0,
+                    sgst: sgst || 0,
+                    round_off: roundOff || 0
+                });
+                message.success('Product details updated successfully');
+                fetchMeltProducts();
+                onCancel();
+            } catch (error) {
+                console.error('Error updating purchase details:', error);
+                message.error('Failed to update product details');
+            } finally {
+                setIsSaving(false);
+            }
+        };
 
         const isNewFormat = Array.isArray(purchaseData) && purchaseData.length > 0 && typeof purchaseData[0] === 'object' && purchaseData[0].purchase_id;
 
@@ -1707,6 +1791,15 @@ const Sales = () => {
                 footer={[
                     <Button key="close" onClick={onCancel}>
                         Close
+                    </Button>,
+                    <Button
+                        key="save"
+                        type="primary"
+                        loading={isSaving}
+                        onClick={handleSaveChanges}
+                        disabled={purchaseData.length === 0}
+                    >
+                        Save Changes
                     </Button>
                 ]}
                 width={isNewFormat ? 900 : 600}
@@ -1749,30 +1842,81 @@ const Sales = () => {
                                     )
                                 },
                                 {
+                                    title: 'Product Type',
+                                    key: 'product_type',
+                                    width: 120,
+                                    render: () => {
+                                        const details = record?.metal_details ? JSON.parse(record.metal_details) : null;
+                                        return <Tag color="gold">{record?.product_type || details?.conversion_type || 'old ornaments'}</Tag>;
+                                    }
+                                },
+                                {
                                     title: 'Weight (g)',
                                     key: 'weight',
-                                    width: 120,
-                                    render: (_, record) => (
-                                        <div>
-                                            <div>Gross: {record.gross_weight || '0.000'}</div>
-                                            <div>Net: {record.net_weight || '0.000'}</div>
+                                    width: 160,
+                                    render: (_, record, index) => (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '11px', width: '40px' }}>Gross:</span>
+                                                <InputNumber
+                                                    size="small"
+                                                    value={record.gross_weight}
+                                                    onChange={(val) => handleUpdatePurchaseItem(index, 'gross_weight', val)}
+                                                    style={{ width: '90px' }}
+                                                    step={0.001}
+                                                    precision={3}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '11px', width: '40px' }}>Net:</span>
+                                                <InputNumber
+                                                    size="small"
+                                                    value={record.net_weight}
+                                                    onChange={(val) => handleUpdatePurchaseItem(index, 'net_weight', val)}
+                                                    style={{ width: '90px' }}
+                                                    step={0.001}
+                                                    precision={3}
+                                                />
+                                            </div>
                                         </div>
+                                    )
+                                },
+                                {
+                                    title: 'Rate (₹/g)',
+                                    key: 'rate',
+                                    width: 120,
+                                    render: (_, record, index) => (
+                                        <InputNumber
+                                            size="small"
+                                            value={record.rate}
+                                            onChange={(val) => handleUpdatePurchaseItem(index, 'rate', val)}
+                                            style={{ width: '100px' }}
+                                            precision={2}
+                                        />
                                     )
                                 },
                                 {
                                     title: 'Amount (₹)',
                                     key: 'amount',
-                                    width: 100,
-                                    render: (_, record) => (
-                                        <Text strong>₹{record.amount || '0.00'}</Text>
+                                    width: 130,
+                                    render: (_, record, index) => (
+                                        <InputNumber
+                                            size="small"
+                                            value={record.amount}
+                                            onChange={(val) => handleUpdatePurchaseItem(index, 'amount', val)}
+                                            style={{ width: '110px' }}
+                                            formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                            parser={value => value.replace(/₹\s?|(,*)/g, '')}
+                                            precision={2}
+                                        />
                                     )
                                 }
                             ]}
                             summary={() => (
                                 <Table.Summary>
                                     <Table.Summary.Row>
-                                        <Table.Summary.Cell colSpan={3}>
-                                            <Text strong>Total:</Text>
+                                        <Table.Summary.Cell colSpan={4}>
+                                            <Text strong>Sub Total:</Text>
                                         </Table.Summary.Cell>
                                         <Table.Summary.Cell>
                                             <Text strong>{totalWeight}g</Text>
@@ -1784,6 +1928,44 @@ const Sales = () => {
                                 </Table.Summary>
                             )}
                         />
+                        <Divider />
+                        <Row gutter={16}>
+                            <Col span={8}>
+                                <Text strong>CGST (1.5%) (₹): </Text>
+                                <InputNumber
+                                    size="small"
+                                    value={cgst}
+                                    onChange={setCgst}
+                                    style={{ width: '100%' }}
+                                    precision={2}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <Text strong>SGST (1.5%) (₹): </Text>
+                                <InputNumber
+                                    size="small"
+                                    value={sgst}
+                                    onChange={setSgst}
+                                    style={{ width: '100%' }}
+                                    precision={2}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <Text strong>Round Off (₹): </Text>
+                                <InputNumber
+                                    size="small"
+                                    value={roundOff}
+                                    onChange={setRoundOff}
+                                    style={{ width: '100%' }}
+                                    precision={2}
+                                />
+                            </Col>
+                        </Row>
+                        <div style={{ marginTop: 16, textAlign: 'right', paddingRight: '20px' }}>
+                            <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+                                Grand Total: ₹{(parseFloat(totalAmount) + parseFloat(cgst || 0) + parseFloat(sgst || 0) + parseFloat(roundOff || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </Title>
+                        </div>
                         <div style={{ marginTop: 16, textAlign: 'center' }}>
                             <Text type="secondary">Total Products: {purchaseData.length}</Text>
                         </div>
@@ -2261,7 +2443,7 @@ const Sales = () => {
                     <Button
                         type="link"
                         size="small"
-                        onClick={() => handleViewPurchaseDetails(record.purchases)}
+                        onClick={() => handleViewPurchaseDetails(record)}
                         icon={<InfoCircleOutlined />}
                     >
                         Details
@@ -2486,6 +2668,7 @@ const Sales = () => {
                 purchasesJson={selectedPurchasesJson}
                 visible={purchaseDetailsVisible}
                 onCancel={handleClosePurchaseDetails}
+                record={selectedMeltRecord}
             />
             <PaymentModal />
             <CustomerAssignmentModal />

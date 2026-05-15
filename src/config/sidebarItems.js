@@ -292,6 +292,20 @@ export const sidebarItems = [
     permission: 'account_receipt'
   },
   {
+    path: '/opening_balance',
+    icon: 'bank',
+    label: 'Opening Balance',
+    exact: true,
+    permission: 'opening_balance'
+  },
+  {
+    path: '/opening_stock',
+    icon: 'analytics',
+    label: 'Opening Stock',
+    exact: true,
+    permission: 'opening_stock'
+  },
+  {
     path: '/sales',
     icon: 'sales',
     label: 'Sales',

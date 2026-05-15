@@ -131,13 +131,13 @@
 }
 
 .price-change-up {
-    color: #52c41a;
-    background-color: rgba(82, 196, 26, 0.1);
+    color: #f5222d; /* Red for Price Increase as requested */
+    background-color: rgba(245, 34, 45, 0.1);
 }
 
 .price-change-down {
-    color: #f5222d;
-    background-color: rgba(245, 34, 45, 0.1);
+    color: #52c41a; /* Green for Price Decrease as requested */
+    background-color: rgba(82, 196, 26, 0.1);
 }
 
 .price-change-stable {

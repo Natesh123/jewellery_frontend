@@ -115,25 +115,45 @@ const Dashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
   const [currentGoldRate, setCurrentGoldRate] = useState(0);
   const [currentSilverRate, setCurrentSilverRate] = useState(0);
+  const [prevGoldRate, setPrevGoldRate] = useState(0);
+  const [prevSilverRate, setPrevSilverRate] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [isFetching, setIsFetching] = useState(false);
 
   
   const fetchLiveRate = async () => {
+    if (isFetching) return;
+    setIsFetching(true);
     try {
       const response = await api.get("https://amayagoldpoint.in/api/metal-prices");
-      console.log(response.data);
-      setCurrentGoldRate(response.data[0].price)
-      setCurrentSilverRate(response.data[2].price)
-      return response.data;
-      
+      if (response.data && response.data.length > 0) {
+        const newGoldPrice = response.data[0].price;
+        const newSilverPrice = response.data[2].price;
+        
+        if (newGoldPrice !== currentGoldRate) {
+          setPrevGoldRate(currentGoldRate || newGoldPrice);
+          setCurrentGoldRate(newGoldPrice);
+        }
+        if (newSilverPrice !== currentSilverRate) {
+          setPrevSilverRate(currentSilverRate || newSilverPrice);
+          setCurrentSilverRate(newSilverPrice);
+        }
+
+        const now = new Date();
+        setLastUpdated(now);
+      }
     } catch (error) {
-      // console.error('Error fetching metal prices:', error);
-      // throw error;
+      // Silent error
+    } finally {
+      setIsFetching(false);
     }
   }
 
   useEffect(() => {
     fetchLiveRate();
-  },[])
+    const interval = setInterval(fetchLiveRate, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -149,7 +169,13 @@ const Dashboard = () => {
   };
 
   const formatPercentage = (num) => {
-    return `${num}%`;
+    if (isNaN(num) || num === 0) return '0.0%';
+    return `${num > 0 ? '+' : ''}${num.toFixed(2)}%`;
+  };
+
+  const calculateChange = (current, prev) => {
+    if (!prev || prev === 0) return 0;
+    return ((current - prev) / prev) * 100;
   };
 
   const summaryCards = [
@@ -349,8 +375,8 @@ const Dashboard = () => {
                 <div className="rate-value-container">
                   <Text className="rate-value">₹{currentGoldRate}/g</Text>
                   <Badge
-                    count={`${goldRateData[goldRateData.length - 1].change > 0 ? '+' : ''}${goldRateData[goldRateData.length - 1].change}%`}
-                    className={`rate-badge ${goldRateData[goldRateData.length - 1].change > 0 ? 'positive' : 'negative'}`}
+                    count={formatPercentage(calculateChange(currentGoldRate, prevGoldRate))}
+                    className={`rate-badge ${calculateChange(currentGoldRate, prevGoldRate) >= 0 ? 'positive' : 'negative'}`}
                   />
                 </div>
               </div>
@@ -364,8 +390,8 @@ const Dashboard = () => {
                 <div className="rate-value-container">
                   <Text className="rate-value">₹{currentSilverRate}/g</Text>
                   <Badge
-                    count={`${silverRateData[silverRateData.length - 1].change > 0 ? '+' : ''}${silverRateData[silverRateData.length - 1].change}%`}
-                    className={`rate-badge ${silverRateData[silverRateData.length - 1].change > 0 ? 'positive' : 'negative'}`}
+                    count={formatPercentage(calculateChange(currentSilverRate, prevSilverRate))}
+                    className={`rate-badge ${calculateChange(currentSilverRate, prevSilverRate) >= 0 ? 'positive' : 'negative'}`}
                   />
                 </div>
               </div>
@@ -373,11 +399,12 @@ const Dashboard = () => {
           </Col>
           <Col xs={24} sm={24} md={12}>
             <div className="rate-meta">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Badge status="processing" color="#4CAF50" />
+                <Text strong style={{ color: '#4CAF50', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Live Updates Active</Text>
+              </div>
               <Text className="meta-text">
-                <Text strong>Last Updated:</Text> {new Date().toLocaleString()}
-              </Text>
-              <Text className="meta-text">
-                <Text strong>Next Update:</Text> {new Date(Date.now() + 3600000).toLocaleTimeString()}
+                <Text strong>Last Updated:</Text> {lastUpdated.toLocaleString()}
               </Text>
             </div>
           </Col>
