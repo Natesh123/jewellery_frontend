@@ -639,7 +639,7 @@ const MeltingReceipt = () => {
             }
         };
 
-        const isNewFormat = Array.isArray(purchaseData) && purchaseData.length > 0 && typeof purchaseData[0] === 'object' && purchaseData[0].purchase_id;
+        const isNewFormat = Array.isArray(purchaseData) && purchaseData.length > 0 && typeof purchaseData[0] === 'object';
 
         const totalWeight = purchaseData.reduce((total, product) => total + parseFloat(product.gross_weight || 0), 0).toFixed(3);
         const totalAmount = purchaseData.reduce((total, product) => total + parseFloat(product.amount || 0), 0).toFixed(2);

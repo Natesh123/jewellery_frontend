@@ -589,7 +589,7 @@ const MeltingStatus = () => {
             }
         }, [visible, purchasesJson]);
 
-        const isNewFormat = Array.isArray(purchaseData) && purchaseData.length > 0 && typeof purchaseData[0] === 'object' && purchaseData[0].purchase_id;
+        const isNewFormat = Array.isArray(purchaseData) && purchaseData.length > 0 && typeof purchaseData[0] === 'object';
 
         const totalWeight = purchaseData.reduce((total, product) => total + parseFloat(product.gross_weight || 0), 0).toFixed(3);
         const totalAmount = purchaseData.reduce((total, product) => total + parseFloat(product.amount || 0), 0).toFixed(2);
@@ -639,7 +639,7 @@ const MeltingStatus = () => {
                                     width: 150,
                                     render: (_, record) => (
                                         <Text>
-                                            {record.metal || 'N/A'} - {record.product || 'N/A'} - {record.sub_product || 'N/A'}
+                                            {getMetalNameById(record.metal) || 'N/A'} - {getProductNameById(record.product) || 'N/A'} - {getSubProductNameById(record.sub_product) || 'N/A'}
                                         </Text>
                                     )
                                 },
@@ -2086,34 +2086,34 @@ const MeltingStatus = () => {
         //     )
         // },
 
-        // {
-        //     title: 'Product Type',
-        //     dataIndex: 'product_type',
-        //     key: 'product_type',
-        //     width: 120,
-        //     render: (text, record) => (
-        //         <Select
-        //             placeholder="Select product type"
-        //             style={{ width: '100%' }}
-        //             value={text}
-        //             onChange={(value) => handleMeltProductUpdate(record.id, 'product_type', value)}
-        //             showSearch
-        //             optionFilterProp="children"
-        //             filterOption={(input, option) =>
-        //                 option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-        //             }
-        //         >
+        {
+            title: 'Product Type',
+            dataIndex: 'product_type',
+            key: 'product_type',
+            width: 120,
+            render: (text, record) => (
+                <Select
+                    placeholder="Select product type"
+                    style={{ width: '100%' }}
+                    value={text}
+                    onChange={(value) => handleMeltProductUpdate(record.id, 'product_type', value)}
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                        option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                    }
+                >
 
-        //             <Option key="22k" value="22k">
-        //                 22k
-        //             </Option>
-        //             <Option key="24k" value="24k">
-        //                 24k
-        //             </Option>
-        //         </Select>
+                    <Option key="22k" value="22k">
+                        22k
+                    </Option>
+                    <Option key="24k" value="24k">
+                        24k
+                    </Option>
+                </Select>
 
-        //     )
-        // },
+            )
+        },
         {
             title: 'Weight (g)',
             dataIndex: 'weight',
