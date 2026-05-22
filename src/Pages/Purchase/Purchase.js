@@ -487,7 +487,7 @@ const fetchInitialData = async (page = 1, limit = 10) => {
         { field: 'Net Weight (g)', value: productDetails.net_weight || '0.000' },
         { field: 'MCX Rate (₹/g)', value: `₹${productDetails.mcx_rate || '0.00'}` },
         { field: 'Margin %', value: `${productDetails.margin_percent || '0.00'}%` },
-        { field: 'Margin Weight (g)', value: productDetails.margin_weight || '0.000' },
+
         { field: 'Final Weight (g)', value: productDetails.final_weight || '0.000' },
         { field: 'Rate (₹/g)', value: `₹${productDetails.rate || '0.00'}` },
         { field: 'Amount (₹)', value: `₹${productDetails.amount || '0.00'}` }

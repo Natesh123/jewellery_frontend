@@ -119,6 +119,8 @@ const Sales = () => {
 
     const paymentModes = [
         { value: 'full', label: 'Full Payment' },
+        { value: 'partial', label: 'Partial Payment' },
+        { value: 'due', label: 'Due' },
     ];
     // Add these state variables
     const [updatePaymentModalVisible, setUpdatePaymentModalVisible] = useState(false);
@@ -709,7 +711,7 @@ const Sales = () => {
             const paymentData = {
                 assign_customer: selectedCustomer.id,
                 assign_customer_name: selectedCustomer.customer_name,
-                assigned_at: new Date().toISOString(),
+                assigned_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
                 assign_customer_payment_type: values.payment_type ? values.payment_type.join(', ') : '',
                 total_amount: expectedTotal, // Save at root level for persistence
                 round_off_amount: roundOff,   // Save at root level for persistence
@@ -726,7 +728,7 @@ const Sales = () => {
                     transaction_id: values.transaction_id,
                     cheque_number: values.cheque_number,
                     bank_name: values.bank_name,
-                    payment_date: new Date().toISOString(),
+                    payment_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
                     notes: values.notes
                 })
             };
@@ -951,7 +953,7 @@ const Sales = () => {
                             <Form.Item
                                 name="payment_type"
                                 label="Payment Type"
-                                rules={[{ required: true, message: 'Please select payment type' }]}
+                                rules={[{ required: selectedPaymentMode !== 'due', message: 'Please select payment type' }]}
                             >
                                 <Select
                                     placeholder="Select Payment Type"
@@ -2334,14 +2336,6 @@ const Sales = () => {
             width: 120,
             render: (_, record) => (
                 <Text strong>{(calculations[record.id]?.netWeight || 0).toFixed(3)}g</Text>
-            )
-        },
-        {
-            title: 'Margin Weight (g)',
-            key: 'margin_weight',
-            width: 120,
-            render: (_, record) => (
-                <Text type="secondary">{(calculations[record.id]?.marginWeight || 0).toFixed(3)}g</Text>
             )
         },
         {

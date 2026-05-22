@@ -95,7 +95,7 @@ const SalesReceipt = () => {
                 const currentRate = await fetchMCXData();
 
                 // Switch back to getAllMeltReceiptProducts as it definitely finds the record
-                const response = await getAllMeltReceiptProducts({ search: meltId });
+                const response = await getAllMeltReceiptProducts({ id: meltId });
                 const purchases = response.purchases || response.data?.purchases || [];
                 const meltData = purchases.find(p => p.id === parseInt(meltId));
 
