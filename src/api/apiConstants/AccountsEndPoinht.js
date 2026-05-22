@@ -9,4 +9,12 @@ export const accountsEndpoints = {
   READ_ACCOUNT_HEAD: `${ACCOUNTS}/get_account_head`,
   CREATE_STATE: `${ACCOUNTS}/create_state`,
   GET_STATE: `${ACCOUNTS}/get_state`,
+  CREATE_OPENING_BALANCE: `${ACCOUNTS}/create_opening_balance`,
+  READ_OPENING_BALANCE: `${ACCOUNTS}/get_opening_balance`,
+  UPDATE_OPENING_BALANCE: `${ACCOUNTS}/update_opening_balance`,
+  DELETE_OPENING_BALANCE: `${ACCOUNTS}/delete_opening_balance`,
+  CREATE_OPENING_STOCK: `${ACCOUNTS}/create_opening_stock`,
+  READ_OPENING_STOCK: `${ACCOUNTS}/get_opening_stock`,
+  UPDATE_OPENING_STOCK: `${ACCOUNTS}/update_opening_stock`,
+  DELETE_OPENING_STOCK: `${ACCOUNTS}/delete_opening_stock`,
 };

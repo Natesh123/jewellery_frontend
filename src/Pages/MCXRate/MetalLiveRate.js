@@ -54,21 +54,37 @@ const MetalLiveRate = () => {
                 }));
               
 
-                setPrices(formattedPrices);
-                setLastUpdated(new Date());
-
-                // Initialize price changes for these metals
-                const changes = {};
-                formattedPrices.forEach(metal => {
-                    const key = `${metal.metal}-${metal.carat || 'default'}`;
-                    if (!priceChanges[key]) {
-                        changes[key] = {
-                            direction: Math.random() > 0.5 ? 'up' : 'down',
-                            percentage: (Math.random() * 5).toFixed(2)
-                        };
-                    }
+                setPrices(prevPrices => {
+                    // Calculate price changes based on previous prices
+                    const changes = {};
+                    formattedPrices.forEach(newMetal => {
+                        const key = `${newMetal.metal}-${newMetal.carat || 'default'}`;
+                        const prevMetal = prevPrices.find(p => `${p.metal}-${p.carat || 'default'}` === key);
+                        
+                        if (prevMetal) {
+                            if (newMetal.price > prevMetal.price) {
+                                changes[key] = {
+                                    direction: 'up',
+                                    percentage: (((newMetal.price - prevMetal.price) / prevMetal.price) * 100).toFixed(2)
+                                };
+                            } else if (newMetal.price < prevMetal.price) {
+                                changes[key] = {
+                                    direction: 'down',
+                                    percentage: (((prevMetal.price - newMetal.price) / prevMetal.price) * 100).toFixed(2)
+                                };
+                            } else {
+                                // If price is the same, keep previous direction if any, or stable
+                                changes[key] = prevPrices.length > 0 ? (priceChanges[key] || { direction: 'stable', percentage: '0.00' }) : { direction: 'stable', percentage: '0.00' };
+                            }
+                        } else {
+                            changes[key] = { direction: 'stable', percentage: '0.00' };
+                        }
+                    });
+                    
+                    setPriceChanges(prev => ({ ...prev, ...changes }));
+                    return formattedPrices;
                 });
-                setPriceChanges(prev => ({ ...prev, ...changes }));
+                setLastUpdated(new Date());
             } else {
                 message.error('No data received from live-rates endpoint');
             }
@@ -85,41 +101,20 @@ const MetalLiveRate = () => {
         fetchMetalPrices();
     }, []);
 
-    // Auto-refresh effect - every 12 seconds for API data
+    // Auto-refresh effect - every 1 second for API data
     useEffect(() => {
         let interval;
         if (autoRefresh) {
             interval = setInterval(() => {
                 fetchMetalPrices();
-            }, 12000);
+            }, 1000);
         }
         return () => clearInterval(interval);
     }, [autoRefresh]);
 
-    // Update price changes every second (static simulation)
+    // Removed simulation effect to use real API data comparison
     useEffect(() => {
-        const changeInterval = setInterval(() => {
-            setPriceChanges(prevChanges => {
-                const updatedChanges = { ...prevChanges };
-
-                Object.keys(updatedChanges).forEach(key => {
-                    if (Math.random() < 0.1) {
-                        updatedChanges[key].direction =
-                            updatedChanges[key].direction === 'up' ? 'down' : 'up';
-                    }
-
-                    const currentChange = parseFloat(updatedChanges[key].percentage);
-                    const fluctuation = (Math.random() * 0.5) - 0.25;
-                    let newChange = currentChange + fluctuation;
-                    newChange = Math.max(0.1, Math.min(5, newChange));
-                    updatedChanges[key].percentage = newChange.toFixed(2);
-                });
-
-                return updatedChanges;
-            });
-        }, 1000);
-
-        return () => clearInterval(changeInterval);
+        // Simulation interval removed
     }, []);
 
     // Toggle full screen mode
@@ -231,7 +226,7 @@ const MetalLiveRate = () => {
             <div className="metal-rates-header">
                 <Title level={isFullScreen ? 1 : 2} className="title">
                     Live Metal Prices
-                    <Tooltip title="Real data updates every 12 seconds, price changes update every second. ">
+                    <Tooltip title="Real data updates every second.">
                         <InfoCircleOutlined style={{ marginLeft: 10, fontSize: isFullScreen ? '28px' : '20px' }} />
                     </Tooltip>
                 </Title>
@@ -281,7 +276,7 @@ const MetalLiveRate = () => {
             ) : (
                 <>
                     <Alert
-                        message={`Last updated: ${lastUpdated.toLocaleTimeString()}| Price changes update every second`}
+                        message={`Last updated: ${lastUpdated.toLocaleTimeString()} | Data updates every second`}
                         type="info"
                         showIcon
                         style={{
@@ -298,38 +293,37 @@ const MetalLiveRate = () => {
                             style={{ marginBottom: 20 }}
                         />
                     ) : (
-                        <Row gutter={[20, 20]}>
+                        <Row gutter={[40, 40]} justify="center">
                             {prices.map((metal, index) => {
                                 const changeData = getPriceChangeData(metal);
                                 const changeClass = `price-change-${changeData.direction}`;
                                 const metalColor = getMetalColor(metal);
                                 return (
                                     <Col
-                                        xs={24} sm={12} lg={8} xl={8}
+                                        xs={24} sm={24} lg={12} xl={10}
                                         key={`${metal.metal}-${metal.carat || 'default'}-${index}`}
                                         className="metal-col"
                                     >
                                         <Card
                                             className="metal-card"
                                             style={{
-                                                borderLeft: `6px solid ${metalColor}`,
-                                                borderRadius: '16px',
-                                                background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+                                                borderTop: `6px solid ${metalColor}`,
+                                                borderRadius: '24px',
                                             }}
                                             hoverable
-                                            bodyStyle={{ padding: isFullScreen ? '24px' : '16px' }}
+                                            bodyStyle={{ padding: isFullScreen ? '40px' : '30px' }}
                                         >
                                             <div className="metal-header">
                                                 <span
                                                     className="metal-icon"
-                                                    style={{ fontSize: isFullScreen ? '36px' : '28px' }}
+                                                    style={{ fontSize: isFullScreen ? '72px' : '48px' }}
                                                 >
                                                     {getMetalIcon(metal.metal)}
                                                 </span>
                                                 <Title
-                                                    level={isFullScreen ? 3 : 4}
+                                                    level={isFullScreen ? 2 : 3}
                                                     className="metal-name"
-                                                    style={{ marginBottom: 0, marginLeft: 10 }}
+                                                    style={{ marginBottom: 0, marginLeft: 10, color: metalColor }}
                                                 >
                                                     {getMetalDisplayName(metal)}
                                                 </Title>
@@ -348,35 +342,56 @@ const MetalLiveRate = () => {
                                                 )}
                                             </div>
 
-                                            <div style={{ marginTop: 16 }}>
-                                                <Statistic
-                                                    value={formatPrice(metal.effective_rate)}
-                                                    precision={2}
-                                                    valueStyle={{
-                                                        color: metalColor,
-                                                        fontSize: isFullScreen ? '32px' : '24px',
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                    suffix="INR"
-                                                    className="metal-price"
-                                                />
-                                                
-                                               
-                                               
-                                            </div>
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                flexWrap: 'wrap', 
+                                                gap: '20px', 
+                                                marginTop: '25px', 
+                                                marginBottom: '20px' 
+                                            }}>
+                                                <div style={{ 
+                                                    background: changeData.direction === 'up' ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                                                    boxShadow: changeData.direction === 'up' ? '0 10px 25px -5px rgba(239, 68, 68, 0.5)' : '0 10px 25px -5px rgba(16, 185, 129, 0.5)',
+                                                    padding: isFullScreen ? '15px 35px' : '12px 25px',
+                                                    borderRadius: '20px',
+                                                    display: 'inline-block',
+                                                    border: '1px solid rgba(255,255,255,0.2)',
+                                                    transition: 'all 0.4s ease'
+                                                }}>
+                                                    <Statistic
+                                                        value={formatPrice(metal.effective_rate)}
+                                                        precision={2}
+                                                        valueStyle={{
+                                                            color: '#ffffff',
+                                                            fontSize: isFullScreen ? '72px' : '52px',
+                                                            fontWeight: '900',
+                                                            textShadow: '0 4px 15px rgba(0,0,0,0.4)',
+                                                            fontFamily: "'Courier New', Courier, monospace",
+                                                            letterSpacing: '-1px'
+                                                        }}
+                                                        suffix={<span style={{ fontSize: isFullScreen ? '24px' : '18px', marginLeft: '12px', color: 'rgba(255,255,255,0.9)' }}>INR</span>}
+                                                        className="metal-price"
+                                                    />
+                                                </div>
 
-                                            <div
-                                                className={`price-change ${changeClass}`}
-                                                style={{ 
-                                                    fontSize: isFullScreen ? '18px' : '14px',
-                                                    marginTop: 12,
-                                                    fontWeight: 'bold'
-                                                }}
-                                            >
-                                                {changeData.direction === 'up' && '↗ '}
-                                                {changeData.direction === 'down' && '↘ '}
-                                                {changeData.direction === 'stable' && '→ '}
-                                                {changeData.direction !== 'stable' && `${changeData.percentage}%`}
+                                                <div
+                                                    className={`price-change ${changeClass}`}
+                                                    style={{ 
+                                                        fontSize: isFullScreen ? '28px' : '20px',
+                                                        margin: 0,
+                                                        fontWeight: '800',
+                                                        padding: isFullScreen ? '12px 24px' : '8px 16px',
+                                                        borderRadius: '16px',
+                                                        backdropFilter: 'blur(10px)',
+                                                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                                                    }}
+                                                >
+                                                    {changeData.direction === 'up' && '↗ '}
+                                                    {changeData.direction === 'down' && '↘ '}
+                                                    {changeData.direction === 'stable' && '→ '}
+                                                    {changeData.direction !== 'stable' && `${changeData.percentage}%`}
+                                                </div>
                                             </div>
 
                                             <Progress
@@ -390,8 +405,7 @@ const MetalLiveRate = () => {
 
                                             <div className="metal-details" style={{ marginTop: 12 }}>
                                                 <Text
-                                                    type="secondary"
-                                                    style={{ fontSize: isFullScreen ? '14px' : '12px' }}
+                                                    style={{ fontSize: isFullScreen ? '16px' : '14px', color: '#94a3b8', fontWeight: 500, letterSpacing: '0.5px', textTransform: 'uppercase' }}
                                                 >
                                                     Per gram • Effective rate after discount
                                                 </Text>

@@ -719,7 +719,7 @@ const Receipt = () => {
                 {/* ➤ Total Amount */}
                 <Statistic
                   title="Total Amount"
-                  value={Math.round(purchase.final_amount)}
+                  value={Math.round(purchase.total_amount)}
                   prefix="₹"
                   valueStyle={{ fontSize: 20, fontWeight: 'bold' }}
                 />
@@ -727,15 +727,15 @@ const Receipt = () => {
                 {/* ➤ Round Off Amount */}
                 <Statistic
                   title="Round Off Amount"
-                  value={Math.round(purchase.total_amount - purchase.final_amount )}
+                  value={(purchase.final_amount - purchase.total_amount).toFixed(2)}
                   prefix="₹"
-                  valueStyle={{ fontSize: 20, fontWeight: 'bold' }}
+                  valueStyle={{ fontSize: 20, fontWeight: 'bold', color: (purchase.final_amount - purchase.total_amount) < 0 ? '#cf1322' : '#3f8600' }}
                 />
 
                 {/* ➤ Final Amount */}
                 <Statistic
                   title="Final Amount"
-                  value={Math.round(purchase.total_amount )}
+                  value={Math.round(purchase.final_amount)}
                   prefix="₹"
                   valueStyle={{ fontSize: 20, fontWeight: 'bold' }}
                 />

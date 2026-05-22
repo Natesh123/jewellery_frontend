@@ -152,6 +152,13 @@ const MeltingStatus = () => {
         };
 
         initializeData();
+
+        // Set up 1-second live refresh for rates
+        const interval = setInterval(() => {
+            fetchMCXData();
+        }, 1000);
+
+        return () => clearInterval(interval);
     }, []);
 
     // Fetch options for dropdowns
@@ -560,7 +567,19 @@ const MeltingStatus = () => {
                 setLoading(true);
                 try {
                     const parsedData = JSON.parse(purchasesJson || '[]');
-                    setPurchaseData(Array.isArray(parsedData) ? parsedData : []);
+                    const data = Array.isArray(parsedData) ? parsedData : [];
+
+                    // Initialize rate if missing (derived from amount / gross_weight)
+                    const initializedData = data.map(item => {
+                        const amount = parseFloat(item.amount) || 0;
+                        const weight = parseFloat(item.gross_weight) || 0;
+                        if (!item.rate && weight > 0) {
+                            return { ...item, rate: (amount / weight).toFixed(2) };
+                        }
+                        return item;
+                    });
+
+                    setPurchaseData(initializedData);
                 } catch (error) {
                     console.error('Error parsing purchase details:', error);
                     setPurchaseData([]);
@@ -633,6 +652,14 @@ const MeltingStatus = () => {
                                             <div>Gross: {record.gross_weight || '0.000'}</div>
                                             <div>Net: {record.net_weight || '0.000'}</div>
                                         </div>
+                                    )
+                                },
+                                {
+                                    title: 'Rate (₹/g)',
+                                    key: 'rate',
+                                    width: 120,
+                                    render: (text, record) => (
+                                        <Text>₹{record.rate || '0.00'}</Text>
                                     )
                                 },
                                 {

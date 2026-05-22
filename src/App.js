@@ -26,6 +26,7 @@ import Roles from './Pages/User_creation/Roles/Roles';
 import Permissions from './Pages/User_creation/Permissions/Permissions';
 import Receipt from './Pages/Receipt/Receipt';
 import Sales from './Pages/Sales/Sales';
+import SalesReceipt from './Pages/Sales/SalesReceipt';
 import Reports from './Pages/Reports/Reports';
 
 import Collections from './Pages/PledgeItems/Collection'
@@ -48,6 +49,8 @@ import MeltingStatus from './Pages/Purchase/Melting';
 import MasterGrouping from './Pages/Accounts/MasterGrouping';
 import AccountHead from './Pages/Accounts/AccountHead';
 import AccountReceipt from './Pages/Accounts/AccountsReceipt';
+import OpeningBalance from './Pages/Accounts/OpeningBalance';
+import OpeningStock from './Pages/Accounts/OpeningStock';
 import State from './Pages/Accounts/State';
 import GoldRateUpdate from './Pages/Settings/GoldRateUpdate';
 import MarginSettings from './Pages/Settings/MarginSettings';
@@ -228,7 +231,11 @@ function App() {
               element={
                 isAuthenticated ? <Receipt /> : <Navigate to="/login" replace />
               }
-
+            />
+            <Route path="/sales-receipt/:meltId"
+              element={
+                isAuthenticated ? <SalesReceipt /> : <Navigate to="/login" replace />
+              }
             />
             <Route
               path="pledege_items"
@@ -340,6 +347,18 @@ function App() {
               path="account_receipt"
               element={
                 isAuthenticated ? <AccountReceipt /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="opening_balance"
+              element={
+                isAuthenticated ? <OpeningBalance /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="opening_stock"
+              element={
+                isAuthenticated ? <OpeningStock /> : <Navigate to="/login" replace />
               }
             />
             <Route
