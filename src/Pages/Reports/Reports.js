@@ -236,7 +236,7 @@ const Reports = () => {
       });
 
       // Summary
-      const finalY = doc.lastAutoTable.finalY + 10;
+      const finalY = (doc.lastAutoTable ? doc.lastAutoTable.finalY : 30) + 10;
       doc.setFillColor(245, 245, 245);
       doc.rect(15, finalY, pageWidth - 30, 30, 'F');
       doc.setDrawColor(200, 200, 200);
@@ -1034,6 +1034,7 @@ const Reports = () => {
         const params = {
           page: 1,
           limit: 100000,
+          isSales: true,
         };
 
         if (dates) {

@@ -293,38 +293,37 @@ const MetalLiveRate = () => {
                             style={{ marginBottom: 20 }}
                         />
                     ) : (
-                        <Row gutter={[20, 20]}>
+                        <Row gutter={[40, 40]} justify="center">
                             {prices.map((metal, index) => {
                                 const changeData = getPriceChangeData(metal);
                                 const changeClass = `price-change-${changeData.direction}`;
                                 const metalColor = getMetalColor(metal);
                                 return (
                                     <Col
-                                        xs={24} sm={12} lg={8} xl={8}
+                                        xs={24} sm={24} lg={12} xl={10}
                                         key={`${metal.metal}-${metal.carat || 'default'}-${index}`}
                                         className="metal-col"
                                     >
                                         <Card
                                             className="metal-card"
                                             style={{
-                                                borderLeft: `6px solid ${metalColor}`,
-                                                borderRadius: '16px',
-                                                background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+                                                borderTop: `6px solid ${metalColor}`,
+                                                borderRadius: '24px',
                                             }}
                                             hoverable
-                                            bodyStyle={{ padding: isFullScreen ? '24px' : '16px' }}
+                                            bodyStyle={{ padding: isFullScreen ? '40px' : '30px' }}
                                         >
                                             <div className="metal-header">
                                                 <span
                                                     className="metal-icon"
-                                                    style={{ fontSize: isFullScreen ? '36px' : '28px' }}
+                                                    style={{ fontSize: isFullScreen ? '72px' : '48px' }}
                                                 >
                                                     {getMetalIcon(metal.metal)}
                                                 </span>
                                                 <Title
-                                                    level={isFullScreen ? 3 : 4}
+                                                    level={isFullScreen ? 2 : 3}
                                                     className="metal-name"
-                                                    style={{ marginBottom: 0, marginLeft: 10 }}
+                                                    style={{ marginBottom: 0, marginLeft: 10, color: metalColor }}
                                                 >
                                                     {getMetalDisplayName(metal)}
                                                 </Title>
@@ -343,35 +342,56 @@ const MetalLiveRate = () => {
                                                 )}
                                             </div>
 
-                                            <div style={{ marginTop: 16 }}>
-                                                <Statistic
-                                                    value={formatPrice(metal.effective_rate)}
-                                                    precision={2}
-                                                    valueStyle={{
-                                                        color: changeData.direction === 'up' ? '#f5222d' : changeData.direction === 'down' ? '#52c41a' : metalColor,
-                                                        fontSize: isFullScreen ? '32px' : '24px',
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                    suffix="INR"
-                                                    className="metal-price"
-                                                />
-                                                
-                                               
-                                               
-                                            </div>
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                flexWrap: 'wrap', 
+                                                gap: '20px', 
+                                                marginTop: '25px', 
+                                                marginBottom: '20px' 
+                                            }}>
+                                                <div style={{ 
+                                                    background: changeData.direction === 'up' ? 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)' : 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                                                    boxShadow: changeData.direction === 'up' ? '0 10px 25px -5px rgba(239, 68, 68, 0.5)' : '0 10px 25px -5px rgba(16, 185, 129, 0.5)',
+                                                    padding: isFullScreen ? '15px 35px' : '12px 25px',
+                                                    borderRadius: '20px',
+                                                    display: 'inline-block',
+                                                    border: '1px solid rgba(255,255,255,0.2)',
+                                                    transition: 'all 0.4s ease'
+                                                }}>
+                                                    <Statistic
+                                                        value={formatPrice(metal.effective_rate)}
+                                                        precision={2}
+                                                        valueStyle={{
+                                                            color: '#ffffff',
+                                                            fontSize: isFullScreen ? '72px' : '52px',
+                                                            fontWeight: '900',
+                                                            textShadow: '0 4px 15px rgba(0,0,0,0.4)',
+                                                            fontFamily: "'Courier New', Courier, monospace",
+                                                            letterSpacing: '-1px'
+                                                        }}
+                                                        suffix={<span style={{ fontSize: isFullScreen ? '24px' : '18px', marginLeft: '12px', color: 'rgba(255,255,255,0.9)' }}>INR</span>}
+                                                        className="metal-price"
+                                                    />
+                                                </div>
 
-                                            <div
-                                                className={`price-change ${changeClass}`}
-                                                style={{ 
-                                                    fontSize: isFullScreen ? '18px' : '14px',
-                                                    marginTop: 12,
-                                                    fontWeight: 'bold'
-                                                }}
-                                            >
-                                                {changeData.direction === 'up' && '↗ '}
-                                                {changeData.direction === 'down' && '↘ '}
-                                                {changeData.direction === 'stable' && '→ '}
-                                                {changeData.direction !== 'stable' && `${changeData.percentage}%`}
+                                                <div
+                                                    className={`price-change ${changeClass}`}
+                                                    style={{ 
+                                                        fontSize: isFullScreen ? '28px' : '20px',
+                                                        margin: 0,
+                                                        fontWeight: '800',
+                                                        padding: isFullScreen ? '12px 24px' : '8px 16px',
+                                                        borderRadius: '16px',
+                                                        backdropFilter: 'blur(10px)',
+                                                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                                                    }}
+                                                >
+                                                    {changeData.direction === 'up' && '↗ '}
+                                                    {changeData.direction === 'down' && '↘ '}
+                                                    {changeData.direction === 'stable' && '→ '}
+                                                    {changeData.direction !== 'stable' && `${changeData.percentage}%`}
+                                                </div>
                                             </div>
 
                                             <Progress
@@ -385,8 +405,7 @@ const MetalLiveRate = () => {
 
                                             <div className="metal-details" style={{ marginTop: 12 }}>
                                                 <Text
-                                                    type="secondary"
-                                                    style={{ fontSize: isFullScreen ? '14px' : '12px' }}
+                                                    style={{ fontSize: isFullScreen ? '16px' : '14px', color: '#94a3b8', fontWeight: 500, letterSpacing: '0.5px', textTransform: 'uppercase' }}
                                                 >
                                                     Per gram • Effective rate after discount
                                                 </Text>
