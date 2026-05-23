@@ -1297,7 +1297,8 @@ const Sales = () => {
         const marginPercent = 3;
 
         // ✅ Step 1: Net weight after dust & stone
-        const netWeight = (weight - dustWeight) * (purity / 100);
+        const baseWeight = meltWeight > 0 ? meltWeight : weight;
+        const netWeight = (baseWeight - dustWeight) * (purity / 100);
 
         // ✅ Step 2: Margin deduction
         const marginWeight = (netWeight * marginPercent) / 100;
@@ -1494,6 +1495,7 @@ const Sales = () => {
             const response = await getAllMeltReceiptProducts({
                 page: page,
                 limit: pageSize,
+                isSalesPage: true
                 // status: 1
             });
 
@@ -2253,8 +2255,16 @@ const Sales = () => {
             if (Array.isArray(purchases) && purchases.length > 0) {
                 const product = purchases[0].product;
                 if (product) {
-                    return isNaN(Number(product)) ? product : getProductNameById(product);
+                    if (isNaN(Number(product))) {
+                        return product;
+                    }
+                    const name = getProductNameById(product);
+                    if (name && name !== 'N/A') return name;
                 }
+                
+                // Fallbacks if lookup fails or product is missing
+                if (purchases[0].sub_product) return purchases[0].sub_product;
+                if (purchases[0].product_type) return purchases[0].product_type;
             }
         } catch (e) {}
         return 'N/A';
@@ -2441,9 +2451,11 @@ const Sales = () => {
             key: 'assign_customer_name',
             width: 100,
             render: (assign_customer_name) => (
-                <Tag >
-                    {assign_customer_name}
-                </Tag>
+                assign_customer_name ? (
+                    <Tag color="blue">{assign_customer_name}</Tag>
+                ) : (
+                    <Text type="secondary">—</Text>
+                )
             )
         },
         {
