@@ -2231,6 +2231,35 @@ const Sales = () => {
 
     // Updated meltProductColumns with automatic name resolution
     // Updated meltProductColumns with calculated amount
+    
+    const getFallbackMetal = (record) => {
+        if (!record.purchases) return 'N/A';
+        try {
+            const purchases = typeof record.purchases === 'string' ? JSON.parse(record.purchases) : record.purchases;
+            if (Array.isArray(purchases) && purchases.length > 0) {
+                const metal = purchases[0].metal;
+                if (metal) {
+                    return isNaN(Number(metal)) ? metal : getMetalNameById(metal);
+                }
+            }
+        } catch (e) {}
+        return 'N/A';
+    };
+
+    const getFallbackProduct = (record) => {
+        if (!record.purchases) return 'N/A';
+        try {
+            const purchases = typeof record.purchases === 'string' ? JSON.parse(record.purchases) : record.purchases;
+            if (Array.isArray(purchases) && purchases.length > 0) {
+                const product = purchases[0].product;
+                if (product) {
+                    return isNaN(Number(product)) ? product : getProductNameById(product);
+                }
+            }
+        } catch (e) {}
+        return 'N/A';
+    };
+
     const meltProductColumns = [
         {
             title: 'ID',
@@ -2264,7 +2293,7 @@ const Sales = () => {
                         ))}
                     </Select>
                 ) : (
-                    <Text>{getMetalNameById(text)}</Text>
+                    <Text>{text ? (getMetalNameById(text) !== 'N/A' ? getMetalNameById(text) : getFallbackMetal(record)) : getFallbackMetal(record)}</Text>
                 )
             )
         },
@@ -2297,7 +2326,7 @@ const Sales = () => {
                         }
                     </Select>
                 ) : (
-                    <Text>{getProductNameById(text)}</Text>
+                    <Text>{text ? (getProductNameById(text) !== 'N/A' ? getProductNameById(text) : getFallbackProduct(record)) : getFallbackProduct(record)}</Text>
                 )
             )
         },
