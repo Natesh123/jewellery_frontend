@@ -95,7 +95,7 @@ const SalesReceipt = () => {
                 const currentRate = await fetchMCXData();
 
                 // Switch back to getAllMeltReceiptProducts as it definitely finds the record
-                const response = await getAllMeltReceiptProducts({ id: meltId });
+                const response = await getAllMeltReceiptProducts({ id: meltId, isSalesPage: true });
                 const purchases = response.purchases || response.data?.purchases || [];
                 const meltData = purchases.find(p => p.id === parseInt(meltId));
 
@@ -106,11 +106,40 @@ const SalesReceipt = () => {
                     const calc = calculateProductValues(meltData, rateToUse);
                     const finalTotal = getFinalProductTotal(meltData, calc.amount);
 
-                    // Enhance with names
-                    const [metal, product] = await Promise.all([
-                        getMetalById(meltData.metal),
-                        getProductById(meltData.product)
-                    ]);
+                    // Extract accurate IDs from nested purchases if main IDs are null
+                    let actualMetalId = meltData.metal;
+                    let actualProductId = meltData.product;
+                    let fallbackSubProduct = null;
+
+                    if (!actualMetalId || !actualProductId) {
+                        try {
+                            const innerPurchases = typeof meltData.purchases === 'string' ? JSON.parse(meltData.purchases) : meltData.purchases;
+                            if (Array.isArray(innerPurchases) && innerPurchases.length > 0) {
+                                if (!actualMetalId) actualMetalId = innerPurchases[0].metal;
+                                if (!actualProductId) actualProductId = innerPurchases[0].product;
+                                fallbackSubProduct = innerPurchases[0].sub_product || innerPurchases[0].product_type;
+                            }
+                        } catch (e) {}
+                    }
+
+                    let metal = { metalname: 'N/A' };
+                    let product = { product_name: 'N/A' };
+
+                    try {
+                        const promises = [];
+                        if (actualMetalId) promises.push(getMetalById(actualMetalId).then(m => { metal = m; }).catch(e => console.warn(e)));
+                        if (actualProductId && !isNaN(Number(actualProductId))) {
+                            promises.push(getProductById(actualProductId).then(p => { product = p; }).catch(e => console.warn(e)));
+                        }
+                        await Promise.all(promises);
+                    } catch (e) {
+                        console.warn('Error fetching metal/product data', e);
+                    }
+
+                    let finalProductName = product.product_name;
+                    if (!finalProductName || finalProductName === 'N/A') {
+                        finalProductName = fallbackSubProduct || actualProductId || 'N/A';
+                    }
 
                     setRecord({
                         ...meltData,
