@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getPurchaseById } from '../../api/services/purchaseService';
 import { getProductById } from '../../api/services/productService';
-import { getSubProductById } from '../../api/services/subProductServices';
 import { getMetalById } from '../../api/services/metalService';
 import { getBranchById } from '../../api/services/branchService';
 import { getCompanyById } from '../../api/services/companyService';
@@ -68,17 +67,16 @@ const Receipt = () => {
         const productsWithDetails = await Promise.all(
           products.map(async (product) => {
             try {
-              const [metal, productDetail, subProduct] = await Promise.all([
+              const [metal, productDetail] = await Promise.all([
                 getMetalById(product.metal),
-                getProductById(product.product),
-                getSubProductById(product.sub_product)
+                getProductById(product.product)
               ]);
 
               return {
                 ...product,
-                metal_name: metal.metalname || "",
-                product_name: productDetail.product_name || "",
-                sub_product_name: subProduct.sub_product_name || product.sub_product
+                metal_name: metal?.metalname || "",
+                product_name: productDetail?.product_name || "",
+                sub_product_name: product.sub_product
               };
             } catch (error) {
               console.error('Error fetching product details:', error);

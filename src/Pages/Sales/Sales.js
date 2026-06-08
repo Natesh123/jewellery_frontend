@@ -43,6 +43,7 @@ import { getMetals } from '../../api/services/metalService';
 import { getSubProducts } from '../../api/services/subProductServices';
 import { getProductById } from '../../api/services/productService';
 import { getMetalById } from '../../api/services/metalService';
+import { getMasterGroup } from '../../api/services/AccountsService';
 
 import { DatePicker } from 'antd';
 import { getMCXRates } from '../../api/services/quatationService';
@@ -91,6 +92,13 @@ const Sales = () => {
     // Add these state variables at the top of your component
     const [customerModalVisible, setCustomerModalVisible] = useState(false);
     const [selectedMeltProduct, setSelectedMeltProduct] = useState(null);
+    
+    // Grouping states
+    const [groupingModalVisible, setGroupingModalVisible] = useState(false);
+    const [selectedGroupForPayment, setSelectedGroupForPayment] = useState(null);
+    const [masterGroupings, setMasterGroupings] = useState([]);
+    const [isGroupLoading, setIsGroupLoading] = useState(false);
+    const [groupSearchText, setGroupSearchText] = useState('');
     const [customerFilters, setCustomerFilters] = useState({
         search: '',
         page: 1,
@@ -709,15 +717,14 @@ const Sales = () => {
 
             // Prepare payment data
             const paymentData = {
-                assign_customer: selectedCustomer.id,
-                assign_customer_name: selectedCustomer.customer_name,
                 assigned_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
                 assign_customer_payment_type: values.payment_type ? values.payment_type.join(', ') : '',
                 total_amount: expectedTotal, // Save at root level for persistence
                 round_off_amount: roundOff,   // Save at root level for persistence
+                irn_no: values.irn_no || null,
                 payment_details: JSON.stringify({
-                    user_id: selectedCustomer.id,
-                    user_name: selectedCustomer.customer_name,
+                    user_id: selectedCustomer ? selectedCustomer.id : (selectedGroupForPayment ? selectedGroupForPayment.id : null),
+                    user_name: selectedCustomer ? selectedCustomer.customer_name : (selectedGroupForPayment ? selectedGroupForPayment.group_name : 'Unknown'),
                     payment_mode: values.payment_mode,
                     payment_type: values.payment_type ? values.payment_type.join(', ') : '',
                     total_amount: expectedTotal,
@@ -729,16 +736,27 @@ const Sales = () => {
                     cheque_number: values.cheque_number,
                     bank_name: values.bank_name,
                     payment_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
-                    notes: values.notes
+                    notes: values.notes,
+                    irn_no: values.irn_no || null
                 })
             };
 
-
+            if (selectedCustomer) {
+                paymentData.assign_customer = selectedCustomer.id;
+                paymentData.assign_customer_name = selectedCustomer.customer_name;
+            } else if (selectedGroupForPayment) {
+                paymentData.assign_group_id = selectedGroupForPayment.id;
+                paymentData.assign_group_name = selectedGroupForPayment.group_name;
+            }
 
             // Update melt product with customer and payment information
             await updateMeltProduct(selectedMeltProduct.id, paymentData);
 
-            message.success(`Customer ${selectedCustomer.customer_name} assigned with ${values.payment_mode} payment!`);
+            if (selectedCustomer) {
+                message.success(`Customer ${selectedCustomer.customer_name} assigned with ${values.payment_mode} payment!`);
+            } else if (selectedGroupForPayment) {
+                message.success(`Group ${selectedGroupForPayment.group_name} assigned with ${values.payment_mode} payment!`);
+            }
 
             // Refresh melt products
             fetchMeltProducts(meltPagination.current, meltPagination.pageSize);
@@ -747,6 +765,7 @@ const Sales = () => {
             setPaymentModalVisible(false);
             setSelectedMeltProduct(null);
             setSelectedCustomer(null);
+            setSelectedGroupForPayment(null);
 
         } catch (error) {
             console.error('Error processing payment:', error);
@@ -816,7 +835,7 @@ const Sales = () => {
                 title={
                     <div>
                         <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-                        Complete Customer Assignment
+                        {selectedCustomer ? 'Complete Customer Assignment' : 'Complete Grouping Assignment'}
                         {selectedMeltProduct && (
                             <Tag color="blue" style={{ marginLeft: 16 }}>
                                 Product: #AMAMELT{selectedMeltProduct.id}
@@ -828,57 +847,90 @@ const Sales = () => {
                 onCancel={() => {
                     setPaymentModalVisible(false);
                     setSelectedCustomer(null);
+                    setSelectedGroupForPayment(null);
                     setSelectedMeltProduct(null);
                 }}
                 footer={null}
                 width={700}
                 maskClosable={false}
             >
-                {/* Customer Info Card */}
-                <Card
-                    size="small"
-                    style={{ marginBottom: 16, backgroundColor: '#f0f8ff' }}
-                    title={
-                        <div>
-                            <UserOutlined style={{ marginRight: 8 }} />
-                            Selected Customer
-                        </div>
-                    }
-                >
-                    <Row gutter={16} align="middle">
-                        <Col span={4}>
-                            <Avatar
-                                src={selectedCustomer?.customer_photo ? `${uploadConfigUrl}${selectedCustomer.customer_photo}` : null}
-                                size="large"
-                                icon={!selectedCustomer?.customer_photo && <UserOutlined />}
-                                style={{
-                                    backgroundColor: selectedCustomer?.customer_photo ? 'transparent' : roots.gold[400],
-                                    color: roots.text.inverse
-                                }}
-                            />
-                        </Col>
-                        <Col span={20}>
-                            <Row gutter={[8, 8]}>
-                                <Col span={12}>
-                                    <Text strong>Name: </Text>
-                                    <Text>{selectedCustomer?.customer_name}</Text>
-                                </Col>
-                                <Col span={12}>
-                                    <Text strong>ID: </Text>
-                                    <Text>{selectedCustomer?.customer_id}</Text>
-                                </Col>
-                                <Col span={12}>
-                                    <Text strong>Phone: </Text>
-                                    <Text>{selectedCustomer?.phone || 'N/A'}</Text>
-                                </Col>
-                                <Col span={12}>
-                                    <Text strong>Aadhar: </Text>
-                                    <Text>{selectedCustomer?.aadhar_no || 'N/A'}</Text>
-                                </Col>
-                            </Row>
-                        </Col>
-                    </Row>
-                </Card>
+                {/* Customer or Group Info Card */}
+                {selectedCustomer ? (
+                    <Card
+                        size="small"
+                        style={{ marginBottom: 16, backgroundColor: '#f0f8ff' }}
+                        title={
+                            <div>
+                                <UserOutlined style={{ marginRight: 8 }} />
+                                Selected Customer
+                            </div>
+                        }
+                    >
+                        <Row gutter={16} align="middle">
+                            <Col span={4}>
+                                <Avatar
+                                    src={selectedCustomer?.customer_photo ? `${uploadConfigUrl}${selectedCustomer.customer_photo}` : null}
+                                    size="large"
+                                    icon={!selectedCustomer?.customer_photo && <UserOutlined />}
+                                    style={{
+                                        backgroundColor: selectedCustomer?.customer_photo ? 'transparent' : roots.gold[400],
+                                        color: roots.text.inverse
+                                    }}
+                                />
+                            </Col>
+                            <Col span={20}>
+                                <Row gutter={[8, 8]}>
+                                    <Col span={12}>
+                                        <Text strong>Name: </Text>
+                                        <Text>{selectedCustomer?.customer_name}</Text>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Text strong>ID: </Text>
+                                        <Text>{selectedCustomer?.customer_id}</Text>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Text strong>Phone: </Text>
+                                        <Text>{selectedCustomer?.phone || 'N/A'}</Text>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Text strong>Aadhar: </Text>
+                                        <Text>{selectedCustomer?.aadhar_no || 'N/A'}</Text>
+                                    </Col>
+                                </Row>
+                            </Col>
+                        </Row>
+                    </Card>
+                ) : selectedGroupForPayment ? (
+                    <Card
+                        size="small"
+                        style={{ marginBottom: 16, backgroundColor: '#fffbe6' }}
+                        title={
+                            <div>
+                                <InfoCircleOutlined style={{ marginRight: 8 }} />
+                                Selected Grouping
+                            </div>
+                        }
+                    >
+                        <Row gutter={16} align="middle">
+                            <Col span={24}>
+                                <Row gutter={[8, 8]}>
+                                    <Col span={12}>
+                                        <Text strong>Group Name: </Text>
+                                        <Text>{selectedGroupForPayment.group_name}</Text>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Text strong>Group Code: </Text>
+                                        <Text>{selectedGroupForPayment.group_code}</Text>
+                                    </Col>
+                                    <Col span={12}>
+                                        <Text strong>Group Type: </Text>
+                                        <Text>{selectedGroupForPayment.group_type}</Text>
+                                    </Col>
+                                </Row>
+                            </Col>
+                        </Row>
+                    </Card>
+                ) : null}
 
                 {/* Product Info Card */}
                 <Card
@@ -927,6 +979,17 @@ const Sales = () => {
                     onFinish={handlePaymentSubmit}
                     onValuesChange={handleAmountChange}
                 >
+                    <Row gutter={16}>
+                        {/* IRN No */}
+                        <Col span={24}>
+                            <Form.Item
+                                name="irn_no"
+                                label="IRN No (Optional)"
+                            >
+                                <Input placeholder="Enter IRN Number" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                     <Row gutter={16}>
                         {/* Payment Mode */}
                         <Col span={12}>
@@ -1160,6 +1223,117 @@ const Sales = () => {
         );
     };
 
+    const fetchMasterGroupingsData = async (search = '') => {
+        try {
+            setIsGroupLoading(true);
+            const response = await getMasterGroup({ search });
+            if (response && response.success) {
+                setMasterGroupings(response.data);
+            } else if (response && response.data) {
+                setMasterGroupings(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching master groupings:', error);
+            message.error('Failed to fetch master groupings');
+        } finally {
+            setIsGroupLoading(false);
+        }
+    };
+
+    const handleAssignGrouping = (record) => {
+        setSelectedMeltProduct(record);
+        setGroupingModalVisible(true);
+        fetchMasterGroupingsData();
+    };
+
+    const handleGroupSelect = async (group) => {
+        setSelectedGroupForPayment(group);
+        setGroupingModalVisible(false);
+        setPaymentModalVisible(true);
+    };
+
+    const AssignGroupingModal = () => {
+        const groupColumns = [
+            {
+                title: 'Group Code',
+                dataIndex: 'group_code',
+                key: 'group_code',
+                render: (text) => <Tag color="blue">{text}</Tag>
+            },
+            {
+                title: 'Group Name',
+                dataIndex: 'group_name',
+                key: 'group_name',
+                render: (text) => <strong style={{ color: roots.text.primary }}>{text}</strong>
+            },
+            {
+                title: 'Group Type',
+                dataIndex: 'group_type',
+                key: 'group_type',
+                render: (type) => (
+                    <Tag color={type === 'major' ? 'green' : 'orange'}>
+                        {type === 'major' ? 'Major Group' : 'Sub Group'}
+                    </Tag>
+                )
+            },
+            {
+                title: 'Action',
+                key: 'action',
+                render: (_, record) => (
+                    <Button type="primary" size="small" onClick={() => handleGroupSelect(record)}>
+                        Select
+                    </Button>
+                )
+            }
+        ];
+
+        return (
+            <Modal
+                title={
+                    <div>
+                        <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+                        Assign Master Grouping
+                        {selectedMeltProduct && (
+                            <Tag color="blue" style={{ marginLeft: 16 }}>
+                                Product: #AMAMELT{selectedMeltProduct.id}
+                            </Tag>
+                        )}
+                    </div>
+                }
+                visible={groupingModalVisible}
+                onCancel={() => {
+                    setGroupingModalVisible(false);
+                    setSelectedMeltProduct(null);
+                    setGroupSearchText('');
+                }}
+                footer={null}
+                width={800}
+                destroyOnClose
+            >
+                <div style={{ marginBottom: 16 }}>
+                    <Input
+                        placeholder="Search by group name or code"
+                        prefix={<SearchOutlined />}
+                        value={groupSearchText}
+                        onChange={(e) => {
+                            setGroupSearchText(e.target.value);
+                            fetchMasterGroupingsData(e.target.value);
+                        }}
+                        allowClear
+                    />
+                </div>
+                <Table
+                    columns={groupColumns}
+                    dataSource={masterGroupings}
+                    rowKey="id"
+                    loading={isGroupLoading}
+                    pagination={{ pageSize: 5 }}
+                    size="small"
+                />
+            </Modal>
+        );
+    };
+
     // Customer columns for the assignment modal
     const customerColumns = [
         {
@@ -1304,14 +1478,34 @@ const Sales = () => {
         const marginWeight = (netWeight * marginPercent) / 100;
 
         // ✅ Step 3: Final weight after margin
-        const finalWeight = netWeight - marginWeight;
+        let finalWeight = netWeight - marginWeight;
 
-        // ✅ Step 4: Use live gold rate from ref (always current)
-        const currentRate = liveGoldRateRef.current;
-        console.log("CURRENT RATE from ref:", currentRate);
+        // ✅ Step 4: Use custom rate from purchases if available, otherwise live gold rate
+        let currentRate = liveGoldRateRef.current;
+        let exactAmount = null;
+        
+        try {
+            if (product.purchases) {
+                const purchasesObj = typeof product.purchases === 'string' ? JSON.parse(product.purchases) : product.purchases;
+                if (Array.isArray(purchasesObj) && purchasesObj.length > 0) {
+                    if (purchasesObj[0].rate) {
+                        currentRate = parseFloat(purchasesObj[0].rate);
+                    }
+                    
+                    // Prioritize exact sum of final weights and amounts from the purchase records
+                    const totalPurchaseFinalWeight = purchasesObj.reduce((sum, p) => sum + parseFloat(p.final_weight || p.net_weight || 0), 0);
+                    const totalPurchaseAmount = purchasesObj.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                    
+                    if (totalPurchaseFinalWeight > 0) finalWeight = totalPurchaseFinalWeight;
+                    if (totalPurchaseAmount > 0) exactAmount = totalPurchaseAmount;
+                }
+            }
+        } catch (e) {
+            console.warn("Error parsing purchases to get custom rate", e);
+        }
 
         // ✅ Step 5: Amount calculation
-        const amount = finalWeight * currentRate;
+        const amount = exactAmount !== null ? exactAmount : finalWeight * currentRate;
 
         return {
             netWeight: parseFloat(netWeight.toFixed(3)),
@@ -1764,6 +1958,7 @@ const Sales = () => {
             setIsSaving(true);
             try {
                 const totalWt = purchaseData.reduce((total, product) => total + parseFloat(product.gross_weight || 0), 0).toFixed(3);
+                
                 await updateMeltProduct(record.id, {
                     purchases: JSON.stringify(purchaseData),
                     weight: totalWt,
@@ -2397,10 +2592,13 @@ const Sales = () => {
                 let displayAmount = baseAmount.toFixed(2);
                 let isFinalTotal = false;
 
+                let customRate = null;
                 // 1. Check root total_amount
                 if (record.total_amount && parseFloat(record.total_amount) > 0) {
                     displayAmount = parseFloat(record.total_amount).toFixed(2);
                     isFinalTotal = true;
+                    let finalWeight = calculations[record.id]?.finalWeight || 0;
+                    if (finalWeight > 0) customRate = (parseFloat(displayAmount) / finalWeight).toFixed(2);
                 }
                 // 2. Check payment_details
                 else if (record.payment_details) {
@@ -2411,17 +2609,23 @@ const Sales = () => {
                         if (details.total_amount) {
                             displayAmount = parseFloat(details.total_amount).toFixed(2);
                             isFinalTotal = true;
+                            let finalWeight = calculations[record.id]?.finalWeight || 0;
+                            if (finalWeight > 0) customRate = (parseFloat(displayAmount) / finalWeight).toFixed(2);
                         } else if (details.round_off_amount) {
                             displayAmount = (baseAmount + parseFloat(details.round_off_amount)).toFixed(2);
                             isFinalTotal = true;
+                            let finalWeight = calculations[record.id]?.finalWeight || 0;
+                            if (finalWeight > 0) customRate = (parseFloat(displayAmount) / finalWeight).toFixed(2);
                         }
                     } catch (e) { }
                 }
 
-                // 3. Last fallback: Check root round_off_amount
-                if (!isFinalTotal && record.round_off_amount) {
-                    displayAmount = (baseAmount + parseFloat(record.round_off_amount)).toFixed(2);
-                    isFinalTotal = true;
+                // 3. Last fallback: Check root taxes
+                if (!isFinalTotal && (record.round_off !== undefined || record.cgst !== undefined)) {
+                    displayAmount = (baseAmount + parseFloat(record.cgst || 0) + parseFloat(record.sgst || 0) + parseFloat(record.round_off || 0)).toFixed(2);
+                    isFinalTotal = true; // Not strictly 'Final Total' from payment, but it includes taxes so it matches the custom calculated state!
+                    let finalWeight = calculations[record.id]?.finalWeight || 0;
+                    if (finalWeight > 0) customRate = calculations[record.id]?.rate?.toFixed(2) || liveGoldRate.toFixed(2);
                 }
 
                 return (
@@ -2429,14 +2633,13 @@ const Sales = () => {
                         <Text strong style={{ color: '#3f8600', fontSize: '14px' }}>
                             ₹{displayAmount}
                         </Text>
-                        {!isFinalTotal && (
+                        {isFinalTotal ? (
+                            <div style={{ fontSize: '10px', color: '#1890ff' }}>
+                                @ ₹{customRate || liveGoldRate.toFixed(2)}/g (Fixed)
+                            </div>
+                        ) : (
                             <div style={{ fontSize: '10px', color: '#8c8c8c' }}>
                                 @ ₹{liveGoldRate.toFixed(2)}/g
-                            </div>
-                        )}
-                        {isFinalTotal && (
-                            <div style={{ fontSize: '10px', color: '#1890ff' }}>
-                                (Final Total)
                             </div>
                         )}
                     </div>
@@ -2447,27 +2650,30 @@ const Sales = () => {
 
         {
             title: 'Assigned To',
-            dataIndex: 'assign_customer_name',
-            key: 'assign_customer_name',
+            key: 'assigned_to',
             width: 100,
-            render: (assign_customer_name) => (
-                assign_customer_name ? (
-                    <Tag color="blue">{assign_customer_name}</Tag>
-                ) : (
-                    <Text type="secondary">—</Text>
-                )
-            )
+            render: (_, record) => {
+                if (record.assign_customer_name) {
+                    return <Tag color="blue">{record.assign_customer_name}</Tag>;
+                } else if (record.assign_group_name) {
+                    return <Tag color="purple">{record.assign_group_name}</Tag>;
+                } else {
+                    return <Text type="secondary">—</Text>;
+                }
+            }
         },
         {
             title: 'Status',
-            dataIndex: 'assign_customer',
-            key: 'assign_customer',
+            key: 'status',
             width: 100,
-            render: (assign_customer) => (
-                <Tag color={assign_customer > 0 ? 'green' : 'orange'}>
-                    {assign_customer > 0 ? 'Assigned' : 'Pending'}
-                </Tag>
-            )
+            render: (_, record) => {
+                const isAssigned = record.assign_customer > 0 || record.assign_group_id > 0;
+                return (
+                    <Tag color={isAssigned ? 'green' : 'orange'}>
+                        {isAssigned ? 'Assigned' : 'Pending'}
+                    </Tag>
+                );
+            }
         },
         {
             title: 'Actions',
@@ -2483,7 +2689,7 @@ const Sales = () => {
                     >
                         Details
                     </Button>
-                    {record.assign_customer > 0 && (
+                    {(record.assign_customer > 0 || record.assign_group_id > 0) && (
                         <>
                             <Button
                                 type="link"
@@ -2502,19 +2708,37 @@ const Sales = () => {
                         </>
                     )}
 
-                    <Button
-                        type="primary"
-                        size="small"
-                        disabled={record.assign_customer > 0}
-                        onClick={() => handleAssignCustomer(record)}
-                        style={{
-                            background: record.assign_customer > 0 ? "#1890ff" : "#52c41a",
-                            borderColor: record.assign_customer > 0 ? "#1890ff" : "#52c41a"
-                        }}
-                        icon={<UserOutlined />}
-                    >
-                        {record.assign_customer > 0 ? 'Assigned' : 'Assign Customer'}
-                    </Button>
+                    {!(record.assign_group_id > 0) && (
+                        <Button
+                            type="primary"
+                            size="small"
+                            disabled={record.assign_customer > 0}
+                            onClick={() => handleAssignCustomer(record)}
+                            style={{
+                                background: record.assign_customer > 0 ? "#1890ff" : "#52c41a",
+                                borderColor: record.assign_customer > 0 ? "#1890ff" : "#52c41a"
+                            }}
+                            icon={<UserOutlined />}
+                        >
+                            {record.assign_customer > 0 ? 'Assigned' : 'Assign Customer'}
+                        </Button>
+                    )}
+                    
+                    {!(record.assign_customer > 0) && (
+                        <Button
+                            type="primary"
+                            size="small"
+                            disabled={record.assign_group_id > 0}
+                            onClick={() => handleAssignGrouping(record)}
+                            style={{
+                                background: record.assign_group_id > 0 ? "#1890ff" : "#faad14",
+                                borderColor: record.assign_group_id > 0 ? "#1890ff" : "#faad14"
+                            }}
+                            icon={<InfoCircleOutlined />}
+                        >
+                            {record.assign_group_id > 0 ? 'Group Assigned' : 'Assign Grouping'}
+                        </Button>
+                    )}
                 </Space>
             )
         }
@@ -2709,6 +2933,7 @@ const Sales = () => {
             <CustomerAssignmentModal />
             <UpdatePaymentModal />
             <CreatePaymentModal />
+            <AssignGroupingModal />
         </div>
     );
 };
