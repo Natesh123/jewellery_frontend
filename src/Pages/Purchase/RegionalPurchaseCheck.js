@@ -3020,11 +3020,10 @@ const RegionalPurchaseCheck = () => {
                                 label="PAN Number"
                                 name="pan_no"
                                 rules={[
-                                    { required: true, message: 'Please input PAN number!' },
-                                    { len: 10, message: 'PAN must be 10 characters!' }
+                                    { required: true, message: 'Please input PAN number!' }
                                 ]}
                             >
-                                <Input maxLength={10} />
+                                <Input />
                             </Form.Item>
                         </Col>
                     </Row>

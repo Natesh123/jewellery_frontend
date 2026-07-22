@@ -548,7 +548,7 @@ const Reports = () => {
         data.transactions.forEach(t => {
           tableRows.push([
             moment(t.date).format('DD/MM/YYYY'),
-            t.description,
+            t.description || t.narration || '-',
             t.debit > 0 ? parseFloat(t.debit).toFixed(2) : '-',
             t.credit > 0 ? parseFloat(t.credit).toFixed(2) : '-',
           ]);

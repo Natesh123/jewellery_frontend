@@ -48,7 +48,7 @@ export const createCustomer = async (customerData) => {
   }
 };
 
-export const getCustomers = async (page = 1, limit = 10, filters = {}) => {
+export const getCustomers = async (page = 1, limit = 10000, filters = {}) => {
   try {
     const params = {
       page,

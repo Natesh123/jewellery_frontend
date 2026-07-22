@@ -5,6 +5,7 @@ import { getMetalById } from '../../api/services/metalService';
 import { getProductById } from '../../api/services/productService';
 import { getBranchById } from '../../api/services/branchService';
 import { getCompanyById } from '../../api/services/companyService';
+import { getCustomerById } from '../../api/services/customerServices';
 import {
     Card,
     Typography,
@@ -41,23 +42,47 @@ const SalesReceipt = () => {
     const pdfRef = useRef();
 
     // Ported from Sales.js
-    const calculateProductValues = (product, rate) => {
+    const calculateProductValues = (product, fallbackRate) => {
         if (!product) return {};
         const weight = parseFloat(product.weight) || 0;
+        const meltWeight = parseFloat(product.melt_weight) || 0;
         const dustWeight = parseFloat(product.dust_weight) || 0;
         const purity = parseFloat(product.purity) || 100;
         const marginPercent = 3;
 
-        const netWeight = (weight - dustWeight) * (purity / 100);
+        const baseWeight = meltWeight > 0 ? meltWeight : weight;
+        const netWeight = (baseWeight - dustWeight) * (purity / 100);
         const marginWeight = (netWeight * marginPercent) / 100;
-        const finalWeight = netWeight - marginWeight;
-        const amount = finalWeight * rate;
+        let finalWeight = netWeight - marginWeight;
+        let exactAmount = null;
+        let currentRate = fallbackRate;
+
+        try {
+            if (product.purchases) {
+                const purchasesObj = typeof product.purchases === 'string' ? JSON.parse(product.purchases) : product.purchases;
+                if (Array.isArray(purchasesObj) && purchasesObj.length > 0) {
+                    if (purchasesObj[0].rate) {
+                        currentRate = parseFloat(purchasesObj[0].rate);
+                    }
+                    
+                    const totalPurchaseFinalWeight = purchasesObj.reduce((sum, p) => sum + parseFloat(p.final_weight || p.net_weight || 0), 0);
+                    const totalPurchaseAmount = purchasesObj.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                    
+                    if (totalPurchaseFinalWeight > 0) finalWeight = totalPurchaseFinalWeight;
+                    if (totalPurchaseAmount > 0) exactAmount = totalPurchaseAmount;
+                }
+            }
+        } catch (e) {
+            console.warn("Error parsing purchases to get exact amount in receipt", e);
+        }
+
+        const amount = exactAmount !== null ? exactAmount : finalWeight * currentRate;
 
         return {
             netWeight: parseFloat(netWeight.toFixed(3)),
             marginWeight: parseFloat(marginWeight.toFixed(3)),
             finalWeight: parseFloat(finalWeight.toFixed(3)),
-            rate: parseFloat(rate.toFixed(2)),
+            rate: parseFloat(currentRate.toFixed(2)),
             amount: parseFloat(amount.toFixed(2))
         };
     };
@@ -101,10 +126,19 @@ const SalesReceipt = () => {
 
                 if (meltData) {
                     const paymentDetails = meltData.payment_details ? (typeof meltData.payment_details === 'string' ? JSON.parse(meltData.payment_details) : meltData.payment_details) : null;
-                    const rateToUse = paymentDetails?.rate || currentRate;
+                    
+                    const savedTotal = getFinalProductTotal(meltData, null);
+                    const tempCalc = calculateProductValues(meltData, 1);
+                    
+                    let rateToUse = currentRate;
+                    if (paymentDetails?.rate) {
+                        rateToUse = paymentDetails.rate;
+                    } else if (savedTotal && tempCalc.finalWeight > 0) {
+                        rateToUse = savedTotal / tempCalc.finalWeight;
+                    }
 
                     const calc = calculateProductValues(meltData, rateToUse);
-                    const finalTotal = getFinalProductTotal(meltData, calc.amount);
+                    const finalTotal = savedTotal || calc.amount;
 
                     // Extract accurate IDs from nested purchases if main IDs are null
                     let actualMetalId = meltData.metal;
@@ -129,7 +163,7 @@ const SalesReceipt = () => {
                         const promises = [];
                         if (actualMetalId) promises.push(getMetalById(actualMetalId).then(m => { metal = m; }).catch(e => console.warn(e)));
                         if (actualProductId && !isNaN(Number(actualProductId))) {
-                            promises.push(getProductById(actualProductId).then(p => { product = p; }).catch(e => console.warn(e)));
+                            promises.push(getProductById(actualProductId).then(p => { product = p.data || p; }).catch(e => console.warn(e)));
                         }
                         await Promise.all(promises);
                     } catch (e) {
@@ -141,10 +175,22 @@ const SalesReceipt = () => {
                         finalProductName = fallbackSubProduct || actualProductId || 'N/A';
                     }
 
+                    let customerData = {};
+                    if (meltData.assign_customer) {
+                        try {
+                            const custResponse = await getCustomerById(meltData.assign_customer);
+                            customerData = custResponse.data || {};
+                        } catch (e) {
+                            console.warn('Error fetching customer data', e);
+                        }
+                    }
+
                     setRecord({
                         ...meltData,
+                        customerData: customerData,
                         metal_name: metal.metalname || 'N/A',
-                        product_name: product.product_name || 'N/A',
+                        product_name: finalProductName,
+                        hsn_code: product.hsn_code || 'N/A',
                         calculated: calc,
                         final_total_display: finalTotal,
                         payment_details_parsed: paymentDetails
@@ -193,6 +239,20 @@ const SalesReceipt = () => {
         }
     };
 
+    const getInvoiceNumber = () => {
+        if (record?.invoice_no) return record.invoice_no;
+        const date = record?.created_at ? new Date(record.created_at) : new Date();
+        let year = date.getFullYear();
+        
+        const startYear = year;
+        const endYear = year + 1;
+        const fyString = `${startYear.toString().slice(-2)}${endYear.toString().slice(-2)}`;
+        const idStr = (record?.id || meltId || '').toString().padStart(3, '0');
+        return `Amaya${idStr}/${fyString}`;
+    };
+
+    const invoiceNumber = getInvoiceNumber();
+
     const handlePrint = () => {
         const printWindow = window.open('', '_blank');
         const printContent = receiptRef.current.innerHTML;
@@ -200,7 +260,7 @@ const SalesReceipt = () => {
         printWindow.document.write(`
       <html>
         <head>
-          <title>Sales Receipt #AMAMELT${meltId}</title>
+          <title>Sales Invoice ${invoiceNumber}</title>
           <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
             .no-print { display: none !important; }
@@ -240,7 +300,7 @@ const SalesReceipt = () => {
             const imgWidth = 190;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
             pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-            pdf.save(`Sales_Receipt_AMAMELT${meltId}.pdf`);
+            pdf.save(`Sales_Invoice_${invoiceNumber.replace('/', '_')}.pdf`);
             message.destroy();
             message.success('PDF downloaded successfully');
         } catch (error) {
@@ -258,10 +318,11 @@ const SalesReceipt = () => {
     // Use sales_payments history for accuracy
     const payments = record.sales_payments || [];
     const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.completed_payment || p.paid_amount || 0), 0);
-    const roundOff = payments.reduce((sum, p) => sum + parseFloat(p.pending_payment || p.round_off_amount || 0), 0);
+    const paymentRoundOff = payments.reduce((sum, p) => sum + parseFloat(p.pending_payment || p.round_off_amount || 0), 0);
+    const roundOff = parseFloat(record.round_off || record.round_off_amount || 0) || paymentRoundOff;
 
-    // Total Amount is the base value from calculation or record
-    const baseTotal = parseFloat(record.calculated?.amount || record.total_amount || 0);
+    // Total Amount should be the exact final total from the database if available
+    const baseTotal = parseFloat(record.final_total_display || record.calculated?.amount || 0);
     // Final Amount = Base + Round Off (Always sum for visual consistency on report)
     // Final Amount = Base + GST + Round Off
     const finalAmount = baseTotal + parseFloat(record.cgst || 0) + parseFloat(record.sgst || 0) + roundOff;
@@ -270,6 +331,7 @@ const SalesReceipt = () => {
         {
             key: '1',
             description: `${record.metal_name} - ${record.product_name}`,
+            hsn: record.hsn_code && record.hsn_code !== 'N/A' ? record.hsn_code : '-',
             gross_wt: parseFloat(record.weight || 0).toFixed(3),
             melt_wt: parseFloat(record.melt_weight || 0).toFixed(3),
             dust_wt: parseFloat(record.dust_weight || 0).toFixed(3),
@@ -281,6 +343,7 @@ const SalesReceipt = () => {
 
     const columns = [
         { title: 'Description', dataIndex: 'description', key: 'description' },
+        { title: 'HSN Code', dataIndex: 'hsn', key: 'hsn', align: 'center' },
         { title: 'Gross Wt (g)', dataIndex: 'gross_wt', key: 'gross_wt', align: 'right' },
         { title: 'Dust Wt (g)', dataIndex: 'dust_wt', key: 'dust_wt', align: 'right' },
         { title: 'Pure Wt (g)', dataIndex: 'pure_wt', key: 'pure_wt', align: 'right' },
@@ -293,7 +356,7 @@ const SalesReceipt = () => {
             <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '16px', textAlign: 'right' }}>
                     <Space>
-                        <Button type="primary" icon={<PrinterOutlined />} onClick={handlePrint}>Print Receipt</Button>
+                        <Button type="primary" icon={<PrinterOutlined />} onClick={handlePrint}>Print Invoice</Button>
                         <Button type="primary" icon={<DownloadOutlined />} onClick={handleDownloadPDF}>Download PDF</Button>
                     </Space>
                 </div>
@@ -325,13 +388,19 @@ const SalesReceipt = () => {
                             <Divider style={{ margin: '15px 0', borderTop: '2px solid #eee' }} />
 
                             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                                <Title level={4} style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>SALES RECEIPT</Title>
+                                <Title level={4} style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '1px' }}>SALES INVOICE</Title>
                             </div>
 
                             <Row justify="space-between" style={{ marginBottom: '20px' }}>
                                 <Col>
-                                    <Text strong>Receipt No: </Text>
-                                    <Text type="secondary">#AMAMELT{record.id || meltId}</Text>
+                                    <Text strong>Invoice No: </Text>
+                                    <Text type="secondary">{invoiceNumber}</Text>
+                                    {record.irn_no && (
+                                        <div style={{ marginTop: 4 }}>
+                                            <Text strong>IRN No: </Text>
+                                            <Text type="secondary" style={{ wordBreak: 'break-all' }}>{record.irn_no}</Text>
+                                        </div>
+                                    )}
                                 </Col>
                                 <Col>
                                     <Text strong>Date: </Text>
@@ -339,14 +408,23 @@ const SalesReceipt = () => {
                                 </Col>
                             </Row>
 
-                            {/* Customer Details */}
+                            {/* Customer / Group Details */}
                             <div className="section-title" style={{ background: '#f9f9f9', padding: '8px 12px', fontWeight: 'bold', marginBottom: '10px', borderLeft: '4px solid #b8860b' }}>
-                                CUSTOMER DETAILS
+                                {record.assign_group_name ? 'GROUP DETAILS' : 'CUSTOMER DETAILS'}
                             </div>
                             <Row gutter={24} style={{ marginBottom: '20px' }}>
                                 <Col span={12}>
-                                    <div><Text strong>Name: </Text><Text>{record.assign_customer_name}</Text></div>
-                                    <div><Text strong>Aadhar: </Text><Text>{record.aadhar_no || 'N/A'}</Text></div>
+                                    {record.assign_group_name ? (
+                                        <>
+                                            <div><Text strong>Group Name: </Text><Text>{record.assign_group_name}</Text></div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div><Text strong>Name: </Text><Text>{record.assign_customer_name || 'N/A'}</Text></div>
+                                            <div><Text strong>Address: </Text><Text>{record.customerData?.address_1 ? `${record.customerData.address_1}${record.customerData.city ? `, ${record.customerData.city}` : ''}` : 'N/A'}</Text></div>
+                                            <div><Text strong>PAN: </Text><Text>{record.customerData?.pan_no || 'N/A'}</Text></div>
+                                        </>
+                                    )}
                                 </Col>
                                 <Col span={12} style={{ textAlign: 'right' }}>
                                     <div><Text strong>Payment Method: </Text><Tag color="green">{payments.length > 0 ? Array.from(new Set(payments.map(p => p.payment_type))).join(', ') : 'N/A'}</Tag></div>

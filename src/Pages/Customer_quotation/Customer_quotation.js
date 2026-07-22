@@ -2101,18 +2101,13 @@ const CustomerQuotation = () => {
     }
   `;
   const tablePagination = {
-    current: pagination.current,    // ✅ Use 'current' not 'page'
-    pageSize: pagination.pageSize,  // ✅ Use 'pageSize' not 'limit'
-    total: pagination.total,       // ✅ Total records from server
+    current: pagination.current,
+    pageSize: pagination.pageSize,
+    total: pagination.total,
     showSizeChanger: true,
-    showQuickJumper: true,
+    showQuickJumper: false,
     pageSizeOptions: ['10', '20', '50', '100', '200', '300'],
-    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-    onChange: handleTableChange,  // ✅ This now works
-    onShowSizeChange: (current, size) => {
-      // Handle page size changes
-      fetchInitialData(1, size); // Go to first page with new size
-    }
+    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
   };
   return (
     <div style={{ padding: '24px', backgroundColor: roots.background.default, minHeight: '100vh' }}>
@@ -2274,7 +2269,6 @@ const CustomerQuotation = () => {
             bordered
             loading={loading}
             pagination={tablePagination}
-            // ❌ Remove this line - it's already in tablePagination.onChange
             onChange={handleTableChange}
           />
         </div>

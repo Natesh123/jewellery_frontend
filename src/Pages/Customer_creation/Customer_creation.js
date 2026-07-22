@@ -782,13 +782,13 @@ const CustomerCreation = () => {
             columns={columns}
             dataSource={filteredData}
             pagination={{
-              pageSize: 10,
+              defaultPageSize: 10,
               showSizeChanger: true,
-              showQuickJumper: true,
+              showQuickJumper: false,
               showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} customers`
             }}
             scroll={{ x: 1300 }}
-            rowKey="key"
+            rowKey="id"
             size="middle"
             loading={loading}
           />
@@ -886,10 +886,9 @@ const CustomerCreation = () => {
                   name="pan_no"
                   rules={[
                     // { required: true, message: 'Please input PAN number!' },
-                    { len: 10, message: 'PAN must be 10 characters!' }
                   ]}
                 >
-                  <Input maxLength={10} />
+                  <Input />
                 </Form.Item>
               </Col>
             </Row>
